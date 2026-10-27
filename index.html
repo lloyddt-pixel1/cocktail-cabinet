@@ -350,10 +350,25 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
     if (u) { gate.hidden = true; document.getElementById("who").textContent = u.email; resolveDb(db); }
     else { gate.hidden = false; }
   });
+  const MSG = {
+    "auth/popup-blocked": "Your browser blocked the sign-in window. Allow pop-ups for this site, then try again.",
+    "auth/popup-closed-by-user": "The sign-in window closed before you finished. Try again.",
+    "auth/cancelled-popup-request": "The sign-in window closed before you finished. Try again.",
+    "auth/unauthorized-domain": "Firebase doesn't allow sign-in from this web address yet. Add lloyddt-pixel1.github.io under Authentication, then Settings, then Authorized domains.",
+    "auth/operation-not-allowed": "Google sign-in isn't switched on yet. Turn it on under Authentication, then Sign-in method.",
+    "auth/network-request-failed": "Couldn't reach Google. Check your connection and try again."
+  };
+  const showErr = e => {
+    const msg = document.getElementById("gateMsg");
+    msg.textContent = (MSG[e.code] || "Sign-in didn't work.") + " (" + (e.code || e.message || "unknown error") + ")";
+    msg.className = "err";
+  };
+  auth.getRedirectResult().catch(showErr);
   document.getElementById("gateIn").onclick = async () => {
     const p = new firebase.auth.GoogleAuthProvider();
+    p.setCustomParameters({ prompt: "select_account" });
     try { await auth.signInWithPopup(p); }
-    catch (e) { if (e.code === "auth/popup-blocked" || e.code === "auth/operation-not-supported-in-this-environment") auth.signInWithRedirect(p); }
+    catch (e) { showErr(e); }
   };
   const out = () => auth.signOut().then(() => location.reload());
   document.getElementById("gateOut").onclick = out;
