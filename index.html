@@ -153,6 +153,8 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
 .gate { position: fixed; inset: 0; z-index: 20; background: var(--bg); display: grid; place-items: center; padding: 24px max(16px, env(safe-area-inset-left, 0px)); }
 .gate-card { max-width: 360px; width: 100%; display: flex; flex-direction: column; gap: 14px; text-align: center; }
 .gate-card p { margin: 0; color: var(--muted); }
+.or { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 0.85rem; }
+.or::before, .or::after { content: ""; flex: 1; border-top: 1px solid var(--line); }
 .toast {
   position: fixed; left: 50%; transform: translateX(-50%);
   bottom: calc(16px + env(safe-area-inset-bottom, 0px));
@@ -169,6 +171,9 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
     <h1>Cabinet</h1>
     <p id="gateMsg">Sign in to see your bottles and cocktails.</p>
     <button class="btn" id="gateIn">Sign in with Google</button>
+    <div class="or"><span>or use any email</span></div>
+    <input type="email" id="gateEmail" placeholder="you@example.com" autocomplete="email" aria-label="Email address">
+    <button class="btn ghost" id="gateLink">Email me a sign-in link</button>
     <button class="btn ghost" id="gateOut" hidden>Sign out and try another account</button>
   </div>
 </div>
@@ -353,6 +358,8 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
     gate.hidden = false;
     document.getElementById("gateMsg").textContent = `${auth.currentUser?.email || "This account"} doesn't have access to this Cabinet.`;
     document.getElementById("gateIn").hidden = true;
+    for (const id of ["gateEmail", "gateLink"]) document.getElementById(id).hidden = true;
+    document.querySelector(".or").hidden = true;
     document.getElementById("gateOut").hidden = false;
   }
   let resolveDb;
@@ -367,7 +374,10 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
     "auth/cancelled-popup-request": "The sign-in window closed before you finished. Try again.",
     "auth/unauthorized-domain": "Firebase doesn't allow sign-in from this web address yet. Add lloyddt-pixel1.github.io under Authentication, then Settings, then Authorized domains.",
     "auth/operation-not-allowed": "Google sign-in isn't switched on yet. Turn it on under Authentication, then Sign-in method.",
-    "auth/network-request-failed": "Couldn't reach Google. Check your connection and try again."
+    "auth/network-request-failed": "Couldn't reach the sign-in service. Check your connection and try again.",
+    "auth/invalid-email": "That doesn't look like an email address. Check it and try again.",
+    "auth/invalid-action-code": "That sign-in link has expired or was already used. Send yourself a new one.",
+    "auth/expired-action-code": "That sign-in link has expired. Send yourself a new one."
   };
   const showErr = e => {
     const msg = document.getElementById("gateMsg");
@@ -375,6 +385,35 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
     msg.className = "err";
   };
   auth.getRedirectResult().catch(showErr);
+  // Email link sign-in: send a link, then finish when the person opens it.
+  const emailIn = document.getElementById("gateEmail"), linkBtn = document.getElementById("gateLink");
+  const info = t => { const m = document.getElementById("gateMsg"); m.textContent = t; m.className = ""; };
+  const isLink = auth.isSignInWithEmailLink(location.href);
+  async function finishLink(email) {
+    try {
+      await auth.signInWithEmailLink(email, location.href);
+      try { localStorage.removeItem("emailForSignIn"); } catch (e) {}
+      history.replaceState(null, "", location.pathname);
+    } catch (e) { showErr(e); }
+  }
+  if (isLink) {
+    let saved = null;
+    try { saved = localStorage.getItem("emailForSignIn"); } catch (e) {}
+    if (saved) finishLink(saved);
+    else { info("Type the email address you used to finish signing in."); linkBtn.textContent = "Finish signing in"; }
+  }
+  linkBtn.onclick = async () => {
+    const email = emailIn.value.trim().toLowerCase();
+    if (!email) { emailIn.focus(); return; }
+    if (isLink) return finishLink(email);
+    linkBtn.disabled = true;
+    try {
+      await auth.sendSignInLinkToEmail(email, { url: location.origin + location.pathname, handleCodeInApp: true });
+      try { localStorage.setItem("emailForSignIn", email); } catch (e) {}
+      info(`Check ${email} for a sign-in link and open it on this device. If it's not there in a minute, look in spam.`);
+    } catch (e) { showErr(e); }
+    finally { linkBtn.disabled = false; }
+  };
   document.getElementById("gateIn").onclick = async () => {
     const p = new firebase.auth.GoogleAuthProvider();
     p.setCustomParameters({ prompt: "select_account" });
