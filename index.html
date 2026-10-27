@@ -1,0 +1,859 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Cabinet">
+<meta name="theme-color" content="#23634a">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" href="icon.png">
+<title>Cocktail Cabinet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: one narrow phone column. Add box on top, bottles grouped by shelf below. */
+:root {
+  --bg: #f3f5f2;
+  --surface: #ffffff;
+  --fg: #1a201d;
+  --muted: #5d6862;
+  --line: #d9dfda;
+  --accent: #23634a;
+  --accent-fg: #ffffff;
+  --amber: #9a5a12;
+  --warn-bg: #fbefd9;
+  --font-display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", sans-serif;
+  --font-body: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121614; --surface: #1b211e; --fg: #e8ece9; --muted: #9aa6a0; --line: #2d3531;
+    --accent: #5fbf94; --accent-fg: #0d1a14; --amber: #e2a65a; --warn-bg: #3a2c16;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121614; --surface: #1b211e; --fg: #e8ece9; --muted: #9aa6a0; --line: #2d3531;
+  --accent: #5fbf94; --accent-fg: #0d1a14; --amber: #e2a65a; --warn-bg: #3a2c16;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body {
+  background: var(--bg); color: var(--fg);
+  font: 16px/1.45 var(--font-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 96px;
+}
+main { max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+h1 { font: 700 2rem/1.1 var(--font-display); margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+.count { font: 500 0.85rem var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.banner { background: var(--warn-bg); border-radius: 8px; padding: 10px 12px; font-size: 0.9rem; }
+
+.adder { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+label.lbl { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+input[type=text], textarea, select {
+  font: inherit; color: var(--fg); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; width: 100%; min-width: 0;
+}
+input[type=text] { font-size: 1.05rem; }
+textarea { min-height: 140px; resize: vertical; }
+input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.sugs { display: flex; flex-direction: column; }
+.sug {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  background: none; border: 0; border-top: 1px solid var(--line); color: var(--fg);
+  font: inherit; text-align: left; padding: 11px 4px; cursor: pointer;
+}
+.sug:first-child { border-top: 0; }
+.sug:hover { background: var(--bg); }
+.sug .cat { font-size: 0.85rem; color: var(--amber); white-space: nowrap; }
+.sug.other { color: var(--muted); }
+
+.row { display: flex; gap: 8px; align-items: center; }
+.row > * { min-width: 0; }
+.btn {
+  font: 600 0.95rem var(--font-body); border-radius: 8px; padding: 10px 14px; cursor: pointer;
+  border: 1px solid var(--accent); background: var(--accent); color: var(--accent-fg); white-space: nowrap;
+}
+.btn.ghost { background: none; color: var(--accent); }
+.btn:disabled { opacity: 0.45; cursor: default; }
+.linkbtn { background: none; border: 0; color: var(--accent); font: 600 0.9rem var(--font-body); padding: 4px 0; cursor: pointer; text-align: left; }
+
+.paste-rows { display: flex; flex-direction: column; gap: 8px; }
+.paste-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 6px; align-items: center; }
+.paste-row .nm { font-weight: 500; overflow-wrap: anywhere; }
+.paste-row select.unset { border-color: var(--amber); }
+
+.shelf { display: flex; flex-direction: column; }
+.shelf h2 { font: 700 1.1rem var(--font-display); margin: 0 0 4px; display: flex; justify-content: space-between; align-items: baseline; }
+.shelf h2 span { font: 500 0.8rem var(--font-mono); color: var(--muted); }
+.bottle { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); }
+.bottle .nm { font-weight: 500; overflow-wrap: anywhere; }
+.bottle select { width: auto; max-width: 9.5rem; padding: 4px 6px; font-size: 0.8rem; color: var(--amber); background: none; border-color: transparent; text-align: right; }
+.bottle select:hover { border-color: var(--line); }
+.x { background: none; border: 0; color: var(--muted); font-size: 1.1rem; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; }
+.x:hover { background: var(--surface); color: var(--fg); }
+
+.empty { border: 1px dashed var(--line); border-radius: 12px; padding: 20px; color: var(--muted); }
+.empty strong { color: var(--fg); display: block; font-family: var(--font-display); font-size: 1.15rem; margin-bottom: 4px; }
+
+.tabs { display: flex; gap: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 4px; }
+.tab { flex: 1; background: none; border: 0; border-radius: 7px; padding: 9px 8px; font: 600 0.95rem var(--font-body); color: var(--muted); cursor: pointer; }
+.tab[aria-selected="true"] { background: var(--accent); color: var(--accent-fg); }
+.view { display: flex; flex-direction: column; gap: 20px; }
+.toolbar { display: flex; gap: 8px; }
+.toolbar input { flex: 1; }
+.drinks { display: flex; flex-direction: column; }
+.drink { border-top: 1px solid var(--line); }
+.drow { display: flex; align-items: baseline; gap: 4px; }
+.star { background: none; border: 0; padding: 10px 8px 10px 0; font-size: 1.15rem; line-height: 1; color: var(--muted); cursor: pointer; }
+.star[aria-pressed="true"] { color: var(--amber); }
+.drow > .open { flex: 1; min-width: 0; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; background: none; border: 0; padding: 12px 0; font: inherit; color: var(--fg); text-align: left; cursor: pointer; }
+.drink > button { width: 100%; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; background: none; border: 0; padding: 12px 0; font: inherit; color: var(--fg); text-align: left; cursor: pointer; }
+.drink .dn { font-weight: 600; }
+.drink .tag { font-size: 0.75rem; color: var(--muted); white-space: nowrap; letter-spacing: 0.03em; }
+.drink .tag.mine { color: var(--amber); }
+.drink .tag.htd { color: var(--accent); font-weight: 600; }
+.spec { padding: 0 0 14px; display: flex; flex-direction: column; gap: 8px; font-size: 0.95rem; }
+.spec ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 2px; }
+.spec .amt { display: inline-block; min-width: 4.2em; font: 500 0.85rem var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.spec .bottle-line { font-weight: 600; }
+.spec .sub { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.spec p { margin: 0; }
+.seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.seg button { border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 999px; padding: 7px 12px; font: 600 0.85rem var(--font-body); cursor: pointer; font-variant-numeric: tabular-nums; }
+.seg button[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.seg.base button { font-weight: 500; padding: 5px 10px; font-size: 0.8rem; }
+.seg.base button[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.unlock { display: flex; flex-direction: column; margin-bottom: 18px; }
+.unlock h2 { font: 700 1.1rem var(--font-display); margin: 0 0 4px; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
+.unlock h2 > span:last-child { margin-left: auto; font: 500 0.8rem var(--font-mono); color: var(--amber); }
+.unlock .alts { font: 400 0.85rem var(--font-body); color: var(--muted); }
+.spec .have { font-weight: 400; font-size: 0.85rem; color: var(--accent); margin-left: 6px; }
+.spec .swap { font-weight: 600; font-size: 0.85rem; color: var(--amber); margin-left: 6px; }
+.drink .swapnote { display: block; font-weight: 400; font-size: 0.82rem; color: var(--amber); }
+.spec .need { font-weight: 600; font-size: 0.85rem; color: var(--amber); margin-left: 6px; }
+.form { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 12px; }
+.form h2 { font: 700 1.2rem var(--font-display); margin: 0; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.brow { display: grid; grid-template-columns: 4.5rem 1fr auto; gap: 6px; align-items: center; }
+.brow select { grid-column: 1 / 3; }
+.hint { font-size: 0.85rem; color: var(--muted); margin: 0; }
+.err { color: var(--amber); font-size: 0.9rem; margin: 0; }
+.gate { position: fixed; inset: 0; z-index: 20; background: var(--bg); display: grid; place-items: center; padding: 24px max(16px, env(safe-area-inset-left, 0px)); }
+.gate-card { max-width: 360px; width: 100%; display: flex; flex-direction: column; gap: 14px; text-align: center; }
+.gate-card p { margin: 0; color: var(--muted); }
+.toast {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  background: var(--fg); color: var(--bg); border-radius: 10px; padding: 10px 14px;
+  display: flex; gap: 14px; align-items: center; font-size: 0.95rem; max-width: calc(100% - 32px);
+}
+.toast button { background: none; border: 0; color: var(--bg); font: 600 0.95rem var(--font-body); text-decoration: underline; cursor: pointer; }
+@media (prefers-reduced-motion: no-preference) { .toast { transition: opacity .2s; } }
+</style>
+</head>
+<body>
+<div class="gate" id="gate" hidden>
+  <div class="gate-card">
+    <h1>Cabinet</h1>
+    <p id="gateMsg">Sign in to see your bottles and cocktails.</p>
+    <button class="btn" id="gateIn">Sign in with Google</button>
+    <button class="btn ghost" id="gateOut" hidden>Sign out and try another account</button>
+  </div>
+</div>
+
+
+<main>
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" id="tab-cabinet" aria-selected="true">Cabinet</button>
+    <button class="tab" role="tab" id="tab-cocktails" aria-selected="false">Cocktails</button>
+  </div>
+  <div class="banner" id="offline" hidden>Couldn't reach the database. Check your connection and reload.</div>
+
+  <div class="view" id="view-cabinet">
+  <header>
+    <h1>Cabinet</h1>
+    <span class="count" id="count">0 bottles</span>
+  </header>
+
+  <section class="adder" id="adder">
+    <label class="lbl" for="q">Add a bottle</label>
+    <input type="text" id="q" placeholder="Start typing, like Buffalo Trace" autocomplete="off" autocapitalize="words">
+    <div class="sugs" id="sugs"></div>
+    <div class="row" id="manual" hidden>
+      <select id="manualCat"></select>
+      <button class="btn" id="manualAdd">Add</button>
+    </div>
+    <button class="linkbtn" id="pasteToggle">Paste a list of bottles</button>
+    <div id="paste" hidden>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <label class="lbl" for="pasteText">One bottle per line</label>
+        <textarea id="pasteText" placeholder="Buffalo Trace&#10;Tanqueray&#10;Campari&#10;Carpano Antica"></textarea>
+        <button class="btn ghost" id="pasteSort">Sort into categories</button>
+        <div class="paste-rows" id="pasteRows"></div>
+        <button class="btn" id="pasteAdd" hidden>Add bottles</button>
+      </div>
+    </div>
+  </section>
+
+  <div id="shelves"></div>
+
+  <section class="adder" id="backup">
+    <span class="lbl">Back up</span>
+    <p class="hint">Signed in as <span id="who"></span>. <button class="linkbtn" id="signOut" type="button">Sign out</button></p>
+    <p class="hint">Your Cabinet is saved to your private database. You can also save a backup file, and Restore adds a backup's bottles and favorites back in.</p>
+    <div class="row">
+      <button class="btn ghost" id="backupSave">Save a backup</button>
+      <label class="btn ghost" for="backupFile" style="text-align:center">Restore</label>
+      <input type="file" id="backupFile" accept=".json,application/json" hidden>
+    </div>
+  </section>
+  </div>
+
+  <div class="view" id="view-cocktails" hidden>
+    <header>
+      <h1>Cocktails</h1>
+      <span class="count" id="dcount">Loading…</span>
+    </header>
+    <div class="toolbar">
+      <input type="text" id="dq" placeholder="Search drinks or bottles" autocomplete="off" aria-label="Search cocktails">
+      <button class="btn" id="addToggle">Add</button>
+    </div>
+
+    <div class="seg base" role="group" aria-label="Base spirit" id="baseSeg"></div>
+    <div class="seg" role="group" aria-label="Which cocktails to show">
+      <button type="button" id="seg-now" aria-pressed="true">Make now</button>
+      <button type="button" id="seg-one" aria-pressed="false">One bottle away</button>
+      <button type="button" id="seg-all" aria-pressed="false">All</button>
+    </div>
+
+    <form class="form" id="addForm" hidden>
+      <h2>Add a cocktail</h2>
+      <div class="field" id="parseBox" hidden>
+        <label class="lbl" for="parseText">Paste a recipe</label>
+        <textarea id="parseText" placeholder="Open the recipe link, copy the recipe text, and paste it here."></textarea>
+        <button type="button" class="btn ghost" id="parseBtn">Fill in the form from this</button>
+        <p class="hint" id="parseMsg"></p>
+      </div>
+      <div class="field">
+        <label class="lbl" for="fName">Name</label>
+        <input type="text" id="fName" autocapitalize="words">
+      </div>
+      <div class="field">
+        <span class="lbl">Bottles</span>
+        <p class="hint">Only spirits, liqueurs, vermouths, and amari. These decide which list a drink goes on.</p>
+        <div id="fBottles" style="display:flex;flex-direction:column;gap:10px"></div>
+        <button type="button" class="linkbtn" id="addBottleRow">+ Add a bottle</button>
+      </div>
+      <div class="field">
+        <label class="lbl" for="fOnhand">Everything else, one per line</label>
+        <textarea id="fOnhand" placeholder="1 oz lime juice&#10;¾ oz simple syrup"></textarea>
+      </div>
+      <div class="field">
+        <label class="lbl" for="fGarnish">Garnish</label>
+        <input type="text" id="fGarnish">
+      </div>
+      <div class="field">
+        <label class="lbl" for="fMethod">How to make it</label>
+        <textarea id="fMethod" style="min-height:80px"></textarea>
+      </div>
+      <p class="err" id="fErr" hidden></p>
+      <div class="row">
+        <button type="submit" class="btn">Save cocktail</button>
+        <button type="button" class="btn ghost" id="addCancel">Cancel</button>
+      </div>
+    </form>
+
+    <div class="drinks" id="drinks"></div>
+  </div>
+</main>
+<div class="toast" id="toast" hidden><span id="toastMsg"></span><button id="toastUndo">Undo</button></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+// Storage: a private Firebase database. Only accounts allowed by the database rules can read or write.
+(() => {
+  const firebaseConfig = {
+    apiKey: "AIzaSyB5oSodRmIBM384ONalW0SI_gXciQCLmr8",
+    authDomain: "cocktail-cabinet-c1530.firebaseapp.com",
+    projectId: "cocktail-cabinet-c1530",
+    storageBucket: "cocktail-cabinet-c1530.firebasestorage.app",
+    messagingSenderId: "247442687676",
+    appId: "1:247442687676:web:2cb56f90bf9ccacb25f2b9"
+  };
+  const CATALOG = {"recipes": [{"name": "Alexander", "family": "Alexander", "group": "Unforgettable", "source": "IBA", "bottles": [{"amt": "1 oz", "label": "Cognac", "cats": ["cognac", "brandy"]}, {"amt": "1 oz", "label": "Dark crème de cacao", "cats": ["cacao_dark"]}], "onhand": ["1 oz cream"], "garnish": "Grated nutmeg", "method": "Shake with ice, strain into a chilled coupe."}, {"name": "Americano", "family": "Negroni", "group": "Unforgettable", "source": "IBA", "bottles": [{"amt": "1 oz", "label": "Campari", "cats": ["campari"]}, {"amt": "1 oz", "label": "Sweet vermouth", "cats": ["sweet_vermouth"]}], "onhand": ["Splash of soda water"], "garnish": "Orange slice", "method": "Build over ice in a highball, top with soda."}, {"name": "Angel Face", "family": "Angel Face", "group": "Unforgettable", "source": "IBA", "bottles": [{"amt": "1 oz", "label": "Gin", "cats": ["gin_london_dry", "gin_other"]}, {"amt": "1 oz", "label": "Apricot liqueur", "cats": ["apricot_liqueur"]}, {"amt": "1 oz", "label": "Calvados", "cats": ["apple_brandy"]}], "onhand": [], "garnish": "", "method": "Shake with ice, strain into a chilled cocktail glass."}, {"name": "Aviation", "family": "Aviation", "group": "Unforgettable", "source": "IBA", "bottles": [{"amt": "1½ oz", "label": "Gin", "cats": ["gin_london_dry", "gin_other"]}, {"amt": "½ oz", "label": "Maraschino liqueur", "cats": ["maraschino"]}, {"amt": "¼ oz", "label": "Crème de violette", "cats": ["violette"]}], "onhand": ["½ oz lemon juice"], "garnish": "Cherry", "method": "Shake with ice, strain into a chilled coupe."}, {"name": "Between the Sheets", "family": "Sidecar", "group": "Unforgettable", "source": "IBA", "bottles": [{"amt": "1 oz", "label": "White rum", "cats": ["rum_white"]}, {"amt": "1 oz", "label": "Cognac", "cats": ["cognac", "brandy"]}, {"amt": "1 oz", "label": "Orange liqueur", "cats": ["orange_liqueur"]}], "onhand": ["¾ oz lemon juice"], "garnish": "", "method": "Shake with ice, strain into a chilled cocktail glass."}, {"name": "Boulevardier", "family": "Negroni", "group": "Unforgettable", "source": "IBA", "bottles": [{"amt": "1½ oz", "label": "Bourbon or rye", "cats": ["bourbon", "rye"]}, {"amt": "1 oz", "label": "Campari", "cats": ["campari"]}, {"amt": "1 oz", "label": "Sweet vermouth", "cats": ["sweet_vermouth"]}], "onhand": [], "garnish": "Orange peel", "method": "Stir with ice, strain into a chilled glass."}, {"name": "Brandy Crusta", "family": "Brandy Crusta", "group": "Unforgettable", "source": "IBA", "bottles": [{"amt": "2 oz", "label": "Brandy", "cats": ["cognac", "brandy"]}, {"amt": "¼ oz", "label": "Maraschino liqueur", "cats": ["maraschino"]}, {"amt": "¼ oz", "label": "Orange liqueur", "cats": ["orange_liqueur"]}], "onhand": ["½ oz lemon juice", "¼ oz simple syrup", "2 dashes Angostura"], "garnish": "Sugar rim, long lemon peel", "method": "Shake with ice, strain into a sugar-rimmed glass lined with lemon peel."}, {"name": "Casino", "family": "Casino", "group": "Unforgettable", "source": "IBA", "bottles": [{"amt": "1½ oz", "label": "Old Tom gin", "cats": ["gin_old_tom", "gin_london_dry"]}, {"amt": "¼ oz", "label": "Maraschino liqueur", "cats": ["maraschino"]}], "onhand": ["¼ oz lemon juice", "2 dashes orange bitters"], "garnish": "Lemon peel, cherry", "method": "Shake with ice, strain into a chilled cocktail glass."}, {"name": "Clover Club", "family": "Clover Club", "group": "Unforgettable", "source": "IBA", "bottles": [{"amt": "1½ oz", "label": "Gin", "cats": ["gin_london_dry", "gin_other"]}], "onhand": ["½ oz raspberry syrup", "½ oz lemon juice", "Egg white"], "garnish": "Raspberries", "method": "Dry shake, then shake with ice, strain into a chilled coupe."}, {"name": "Daiquiri", "family": "Daiquiri", "group": "Unforgettable", "source": "IBA", "bottles": [{"amt": "2 oz", "label": "White rum", "cats": ["rum_white"]}], "onhand": ["1 oz lime juice", "¾ oz simple syrup"], "garnish": "", "method": "Shake with ice, strain into a chilled coupe."}, {"name": "Dry Martini", "family": "Martini", "group": "Unforgettable", "source": "IBA", "bottles": [{"amt": "2 oz", "label": "Gin", "cats": ["gin_london_dry", "gin_other"]}, {"amt": "½ oz", "label": "Dry vermouth", "cats": ["dry_vermouth"]}], "onhand": [], "garnish": "Lemon peel or olive", "method": "Stir with ice, strain into a chilled martini glass."}, {"name": "Gin Fizz", "family": "Fizz", "group": "Unforgettable", "source": "IBA", "bottles": [{"amt": "1½ oz", "label": "Gin", "cats": ["gin_london_dry", "gin_other"]}], "onhand": ["1 oz lemon juice", "½ oz simple syrup", "Top with soda water"], "garnish": "Lemon slice", "method": "Shake with ice, strain into a highball, top with soda."}, {"name": "Hanky Panky", "family": "Hanky Panky", "group": "Unforgettable", "source": "IBA", "bottles": [{"amt": "1½ oz", "label": "Gin", "cats": ["gin_london_dry", "gin_other"]}, {"amt": "1½ oz", "label": "Sweet vermouth", "cats": ["sweet_vermouth"]}, {"amt": "2 dashes", "label": "Fernet-Branca", "cats": ["fernet"]}], "onhand": [], "garnish": "Orange peel", "method": "Stir with ice, strain into a chilled cocktail glass."}, {"name": "John Collins", "family": "Collins", "group": "Unforgettable", "source": "IBA", "bottles": [{"amt": "1½ oz", "label": "Gin", "cats": ["gin_london_dry", "gin_other"]}], "onhand": ["1 oz lemon juice", "½ oz simple syrup", "Top with soda water"], "garnish": "Lemon slice, cherry", "method": "Build over ice in a highball, top with soda."}, {"name": "Last Word", "family": "Last Word", "group": "Unforgettable", "source": "IBA", "bottles": [{"amt": "¾ oz", "label": "Gin", "cats": ["gin_london_dry", "gin_other"]}, {"amt": "¾ oz", "label": "Green Chartreuse", "cats": ["green_chartreuse"]}, {"amt": "¾ oz", "label": "Maraschino liqueur", "cats": ["maraschino"]}], "onhand": ["¾ oz lime juice"], "garnish": "", "method": "Shake with ice, strain into a chilled coupe."}, {"name": "Manhattan", "family": "Manhattan", "group": "Unforgettable", "source": "IBA", "bottles": [{"amt": "2 oz", "label": "Rye (or bourbon)", "cats": ["rye", "bourbon"]}, {"amt": "1 oz", "label": "Sweet vermouth", "cats": ["sweet_vermouth"]}], "onhand": ["2 dashes Angostura"], "garnish": "Cherry", "method": "Stir with ice, strain into a chilled coupe."}, {"name": "Martinez", "family": "Martini", "group": "Unforgettable", "source": "IBA", "bottles": [{"amt": "1½ oz", "label": "Old Tom gin", "cats": ["gin_old_tom", "gin_london_dry"]}, {"amt": "1½ oz", "label": "Sweet vermouth", "cats": ["sweet_vermouth"]}, {"amt": "1 tsp", "label": "Maraschino liqueur", "cats": ["maraschino"]}], "onhand": ["2 dashes orange bitters"], "garnish": "Lemon peel", "method": "Stir with ice, strain into a chilled cocktail glass."}, {"name": "Mary Pickford", "family": "Mary Pickford", "group": "Unforgettable", "source": "IBA", "bottles": [{"amt": "2 oz", "label": "White rum", "cats": ["rum_white"]}, {"amt": "1 tsp", "label": "Maraschino liqueur", "cats": ["maraschino"]}], "onhand": ["2 oz pineapple juice", "1 tsp grenadine"], "garnish": "Cherry", "method": "Shake with ice, strain into a chilled cocktail glass."}, {"name": "Monkey Gland", "family": "Monkey Gland", "group": "Unforgettable", "source": "IBA", "bottles": [{"amt": "2 oz", "label": "Gin", "cats": ["gin_london_dry", "gin_other"]}, {"amt": "2 dashes", "label": "Absinthe", "cats": ["absinthe"]}], "onhand": ["1 oz orange juice", "2 dashes grenadine"], "garnish": "", "method": "Shake with ice, strain into a chilled cocktail glass."}, {"name": "Negroni", "family": "Negroni", "group": "Unforgettable", "source": "IBA", "bottles": [{"amt": "1 oz", "label": "Gin", "cats": ["gin_london_dry", "gin_other"]}, {"amt": "1 oz", "label": "Campari", "cats": ["campari"]}, {"amt": "1 oz", "label": "Sweet vermouth", "cats": ["sweet_vermouth"]}], "onhand": [], "garnish": "Orange peel", "method": "Stir with ice, strain over ice in a rocks glass."}, {"name": "Old Fashioned", "family": "Old Fashioned", "group": "Unforgettable", "source": "IBA", "bottles": [{"amt": "2 oz", "label": "Bourbon or rye", "cats": ["bourbon", "rye"]}], "onhand": ["1 sugar cube or ¼ oz simple syrup", "2 dashes Angostura", "Splash of water"], "garnish": "Orange peel, cherry", "method": "Muddle sugar with bitters and water, add whiskey and ice, stir."}, {"name": "Paradise", "family": "Paradise", "group": "Unforgettable", "source": "IBA", "bottles": [{"amt": "1¼ oz", "label": "Gin", "cats": ["gin_london_dry", "gin_other"]}, {"amt": "¾ oz", "label": "Apricot liqueur", "cats": ["apricot_liqueur"]}], "onhand": ["½ oz orange juice"], "garnish": "", "method": "Shake with ice, strain into a chilled cocktail glass."}, {"name": "Planter's Punch", "family": "Planter's Punch", "group": "Unforgettable", "source": "IBA", "bottles": [{"amt": "1½ oz", "label": "Dark Jamaican rum", "cats": ["rum_dark", "rum_aged"]}], "onhand": ["1 oz orange juice", "1 oz pineapple juice", "¾ oz lemon juice", "¼ oz grenadine", "¼ oz simple syrup", "3 dashes Angostura"], "garnish": "Orange slice, cherry", "method": "Shake with ice, strain over ice in a tall glass."}, {"name": "Porto Flip", "family": "Flip", "group": "Unforgettable", "source": "IBA", "bottles": [{"amt": "½ oz", "label": "Brandy", "cats": ["cognac", "brandy"]}, {"amt": "1½ oz", "label": "Ruby port", "cats": ["port"]}], "onhand": ["1 egg yolk"], "garnish": "Grated nutmeg", "method": "Shake hard with ice, strain into a chilled glass."}, {"name": "Ramos Gin Fizz", "family": "Fizz", "group": "Unforgettable", "source": "IBA", "bottles": [{"amt": "1½ oz", "label": "Gin", "cats": ["gin_london_dry", "gin_other"]}], "onhand": ["½ oz lemon juice", "½ oz lime juice", "1 oz simple syrup", "1 oz cream", "Egg white", "3 dashes orange flower water", "Top with soda water"], "garnish": "", "method": "Dry shake, shake long with ice, strain into a highball, top with soda."}, {"name": "Remember the Maine", "family": "Manhattan", "group": "Unforgettable", "source": "IBA", "bottles": [{"amt": "2 oz", "label": "Rye", "cats": ["rye", "bourbon"]}, {"amt": "¾ oz", "label": "Sweet vermouth", "cats": ["sweet_vermouth"]}, {"amt": "2 tsp", "label": "Cherry Heering", "cats": ["cherry_liqueur"]}, {"amt": "½ tsp", "label": "Absinthe", "cats": ["absinthe"]}], "onhand": [], "garnish": "Cherry", "method": "Stir with ice, strain into a chilled coupe."}, {"name": "Rusty Nail", "family": "Rusty Nail", "group": "Unforgettable", "source": "IBA", "bottles": [{"amt": "1½ oz", "label": "Blended Scotch", "cats": ["scotch_blended", "scotch_single_malt"]}, {"amt": "¾ oz", "label": "Drambuie", "cats": ["drambuie"]}], "onhand": [], "garnish": "Lemon peel", "method": "Build over ice in a rocks glass, stir."}, {"name": "Sazerac", "family": "Sazerac", "group": "Unforgettable", "source": "IBA", "bottles": [{"amt": "2 oz", "label": "Rye or cognac", "cats": ["rye", "cognac"]}, {"amt": "Rinse", "label": "Absinthe", "cats": ["absinthe"]}], "onhand": ["1 sugar cube", "3 dashes Peychaud's"], "garnish": "Lemon peel", "method": "Rinse a chilled glass with absinthe. Stir the rest with ice, strain in."}, {"name": "Sidecar", "family": "Sidecar", "group": "Unforgettable", "source": "IBA", "bottles": [{"amt": "2 oz", "label": "Cognac", "cats": ["cognac", "brandy"]}, {"amt": "¾ oz", "label": "Orange liqueur", "cats": ["orange_liqueur"]}], "onhand": ["¾ oz lemon juice"], "garnish": "", "method": "Shake with ice, strain into a chilled coupe."}, {"name": "Stinger", "family": "Stinger", "group": "Unforgettable", "source": "IBA", "bottles": [{"amt": "2 oz", "label": "Cognac", "cats": ["cognac", "brandy"]}, {"amt": "¾ oz", "label": "White crème de menthe", "cats": ["menthe_white"]}], "onhand": [], "garnish": "Mint sprig", "method": "Stir with ice, strain into a chilled cocktail glass."}, {"name": "Tuxedo", "family": "Martini", "group": "Unforgettable", "source": "IBA", "bottles": [{"amt": "1 oz", "label": "Old Tom gin", "cats": ["gin_old_tom", "gin_london_dry"]}, {"amt": "1 oz", "label": "Dry vermouth", "cats": ["dry_vermouth"]}, {"amt": "½ tsp", "label": "Maraschino liqueur", "cats": ["maraschino"]}, {"amt": "¼ tsp", "label": "Absinthe", "cats": ["absinthe"]}], "onhand": ["3 dashes orange bitters"], "garnish": "Lemon peel, cherry", "method": "Stir with ice, strain into a chilled cocktail glass."}, {"name": "Vieux Carré", "family": "Vieux Carré", "group": "Unforgettable", "source": "IBA", "bottles": [{"amt": "1 oz", "label": "Rye", "cats": ["rye", "bourbon"]}, {"amt": "1 oz", "label": "Cognac", "cats": ["cognac", "brandy"]}, {"amt": "1 oz", "label": "Sweet vermouth", "cats": ["sweet_vermouth"]}, {"amt": "1 tsp", "label": "Bénédictine", "cats": ["benedictine"]}], "onhand": ["2 dashes Peychaud's", "2 dashes Angostura"], "garnish": "Lemon peel, cherry", "method": "Stir with ice, strain over ice in a rocks glass."}, {"name": "Whiskey Sour", "family": "Sour", "group": "Unforgettable", "source": "IBA", "bottles": [{"amt": "1½ oz", "label": "Bourbon", "cats": ["bourbon", "rye"]}], "onhand": ["1 oz lemon juice", "½ oz simple syrup", "Egg white (optional)"], "garnish": "Orange slice, cherry", "method": "Shake with ice, strain over ice."}, {"name": "White Lady", "family": "Sidecar", "group": "Unforgettable", "source": "IBA", "bottles": [{"amt": "1½ oz", "label": "Gin", "cats": ["gin_london_dry", "gin_other"]}, {"amt": "1 oz", "label": "Orange liqueur", "cats": ["orange_liqueur"]}], "onhand": ["¾ oz lemon juice"], "garnish": "", "method": "Shake with ice, strain into a chilled cocktail glass."}, {"name": "Bellini", "family": "Bellini", "group": "Contemporary classic", "source": "IBA", "bottles": [], "onhand": ["3 oz prosecco", "1½ oz white peach purée"], "garnish": "", "method": "Pour purée into a flute, top with prosecco."}, {"name": "Black Russian", "family": "Black Russian", "group": "Contemporary classic", "source": "IBA", "bottles": [{"amt": "1⅔ oz", "label": "Vodka", "cats": ["vodka"]}, {"amt": "⅔ oz", "label": "Coffee liqueur", "cats": ["coffee_liqueur"]}], "onhand": [], "garnish": "", "method": "Build over ice in a rocks glass."}, {"name": "Bloody Mary", "family": "Bloody Mary", "group": "Contemporary classic", "source": "IBA", "bottles": [{"amt": "1½ oz", "label": "Vodka", "cats": ["vodka"]}], "onhand": ["3 oz tomato juice", "½ oz lemon juice", "Worcestershire, Tabasco, celery salt, pepper"], "garnish": "Celery, lemon wedge", "method": "Roll gently with ice, pour into a highball."}, {"name": "Caipirinha", "family": "Caipirinha", "group": "Contemporary classic", "source": "IBA", "bottles": [{"amt": "2 oz", "label": "Cachaça", "cats": ["cachaca"]}], "onhand": ["½ lime, cut in wedges", "2 tsp sugar"], "garnish": "", "method": "Muddle lime and sugar, add cachaça and crushed ice, stir."}, {"name": "Champagne Cocktail", "family": "Champagne Cocktail", "group": "Contemporary classic", "source": "IBA", "bottles": [{"amt": "¼ oz", "label": "Cognac", "cats": ["cognac", "brandy"]}], "onhand": ["1 sugar cube", "2 dashes Angostura", "3 oz Champagne"], "garnish": "Orange peel, cherry", "method": "Soak sugar with bitters in a flute, add cognac, top with Champagne."}, {"name": "Corpse Reviver #2", "family": "Corpse Reviver", "group": "Contemporary classic", "source": "IBA", "bottles": [{"amt": "¾ oz", "label": "Gin", "cats": ["gin_london_dry", "gin_other"]}, {"amt": "¾ oz", "label": "Orange liqueur", "cats": ["orange_liqueur"]}, {"amt": "¾ oz", "label": "Lillet Blanc", "cats": ["lillet"]}, {"amt": "Rinse", "label": "Absinthe", "cats": ["absinthe"]}], "onhand": ["¾ oz lemon juice"], "garnish": "Orange peel", "method": "Shake with ice, strain into an absinthe-rinsed coupe."}, {"name": "Cosmopolitan", "family": "Cosmopolitan", "group": "Contemporary classic", "source": "IBA", "bottles": [{"amt": "1½ oz", "label": "Citrus vodka", "cats": ["vodka"]}, {"amt": "½ oz", "label": "Orange liqueur", "cats": ["orange_liqueur"]}], "onhand": ["½ oz lime juice", "1 oz cranberry juice"], "garnish": "Lime wheel", "method": "Shake with ice, strain into a chilled cocktail glass."}, {"name": "Cuba Libre", "family": "Cuba Libre", "group": "Contemporary classic", "source": "IBA", "bottles": [{"amt": "1⅔ oz", "label": "White rum", "cats": ["rum_white"]}], "onhand": ["4 oz cola", "⅓ oz lime juice"], "garnish": "Lime wedge", "method": "Build over ice in a highball."}, {"name": "French 75", "family": "French 75", "group": "Contemporary classic", "source": "IBA", "bottles": [{"amt": "1 oz", "label": "Gin", "cats": ["gin_london_dry", "gin_other"]}], "onhand": ["½ oz lemon juice", "½ oz simple syrup", "2 oz Champagne"], "garnish": "Lemon peel", "method": "Shake gin, lemon, and syrup with ice, strain into a flute, top with Champagne."}, {"name": "French Connection", "family": "Godfather", "group": "Contemporary classic", "source": "IBA", "bottles": [{"amt": "1 oz", "label": "Cognac", "cats": ["cognac", "brandy"]}, {"amt": "1 oz", "label": "Amaretto", "cats": ["amaretto"]}], "onhand": [], "garnish": "", "method": "Build over ice in a rocks glass."}, {"name": "Garibaldi", "family": "Garibaldi", "group": "Contemporary classic", "source": "IBA", "bottles": [{"amt": "1½ oz", "label": "Campari", "cats": ["campari"]}], "onhand": ["4 oz fresh orange juice (fluffy)"], "garnish": "Orange wedge", "method": "Build over ice in a highball."}, {"name": "Grasshopper", "family": "Grasshopper", "group": "Contemporary classic", "source": "IBA", "bottles": [{"amt": "1 oz", "label": "Green crème de menthe", "cats": ["menthe_green"]}, {"amt": "1 oz", "label": "White crème de cacao", "cats": ["cacao_white"]}], "onhand": ["1 oz cream"], "garnish": "Mint leaf", "method": "Shake with ice, strain into a chilled coupe."}, {"name": "Hemingway Special", "family": "Daiquiri", "group": "Contemporary classic", "source": "IBA", "bottles": [{"amt": "2 oz", "label": "White rum", "cats": ["rum_white"]}, {"amt": "½ oz", "label": "Maraschino liqueur", "cats": ["maraschino"]}], "onhand": ["1½ oz grapefruit juice", "½ oz lime juice"], "garnish": "", "method": "Shake with ice, strain into a chilled coupe."}, {"name": "Horse's Neck", "family": "Horse's Neck", "group": "Contemporary classic", "source": "IBA", "bottles": [{"amt": "1½ oz", "label": "Cognac", "cats": ["cognac", "brandy"]}], "onhand": ["4 oz ginger ale", "Dash of Angostura (optional)"], "garnish": "Long lemon peel", "method": "Build over ice in a highball with the peel."}, {"name": "Irish Coffee", "family": "Irish Coffee", "group": "Contemporary classic", "source": "IBA", "bottles": [{"amt": "1½ oz", "label": "Irish whiskey", "cats": ["irish"]}], "onhand": ["3 oz hot coffee", "1 tsp brown sugar", "Lightly whipped cream"], "garnish": "", "method": "Stir whiskey, sugar, and coffee in a warm glass, float cream on top."}, {"name": "Kir", "family": "Kir", "group": "Contemporary classic", "source": "IBA", "bottles": [{"amt": "½ oz", "label": "Crème de cassis", "cats": ["cassis"]}], "onhand": ["3 oz dry white wine"], "garnish": "", "method": "Pour cassis into a wine glass, top with wine."}, {"name": "Lemon Drop Martini", "family": "Cosmopolitan", "group": "Contemporary classic", "source": "IBA", "bottles": [{"amt": "1 oz", "label": "Citrus vodka", "cats": ["vodka"]}, {"amt": "¾ oz", "label": "Orange liqueur", "cats": ["orange_liqueur"]}], "onhand": ["¾ oz lemon juice"], "garnish": "Sugar rim, lemon slice", "method": "Shake with ice, strain into a sugar-rimmed glass."}, {"name": "Long Island Iced Tea", "family": "Long Island", "group": "Contemporary classic", "source": "IBA", "bottles": [{"amt": "½ oz", "label": "Vodka", "cats": ["vodka"]}, {"amt": "½ oz", "label": "Tequila", "cats": ["tequila_blanco", "tequila_reposado"]}, {"amt": "½ oz", "label": "White rum", "cats": ["rum_white"]}, {"amt": "½ oz", "label": "Gin", "cats": ["gin_london_dry", "gin_other"]}, {"amt": "½ oz", "label": "Orange liqueur", "cats": ["orange_liqueur"]}], "onhand": ["1 oz lemon juice", "1 oz simple syrup", "Top with cola"], "garnish": "Lemon slice", "method": "Build over ice in a highball, top with cola."}, {"name": "Mai Tai", "family": "Mai Tai", "group": "Contemporary classic", "source": "IBA", "bottles": [{"amt": "1 oz", "label": "Aged Jamaican rum", "cats": ["rum_aged", "rum_dark"]}, {"amt": "1 oz", "label": "Rhum agricole", "cats": ["rum_agricole", "rum_aged"]}, {"amt": "½ oz", "label": "Orange curaçao", "cats": ["orange_liqueur"]}], "onhand": ["½ oz orgeat", "1 oz lime juice", "¼ oz simple syrup"], "garnish": "Mint sprig, lime shell", "method": "Shake with ice, strain over crushed ice."}, {"name": "Margarita", "family": "Margarita", "group": "Contemporary classic", "source": "IBA", "bottles": [{"amt": "1⅔ oz", "label": "Tequila", "cats": ["tequila_blanco", "tequila_reposado"]}, {"amt": "⅔ oz", "label": "Orange liqueur", "cats": ["orange_liqueur"]}], "onhand": ["⅔ oz lime juice"], "garnish": "Salt rim", "method": "Shake with ice, strain into a salt-rimmed glass."}, {"name": "Mimosa", "family": "Mimosa", "group": "Contemporary classic", "source": "IBA", "bottles": [], "onhand": ["2½ oz Champagne", "2½ oz orange juice"], "garnish": "Orange peel", "method": "Pour juice into a flute, top with Champagne."}, {"name": "Mint Julep", "family": "Julep", "group": "Contemporary classic", "source": "IBA", "bottles": [{"amt": "2 oz", "label": "Bourbon", "cats": ["bourbon"]}], "onhand": ["¼ oz simple syrup", "Mint leaves"], "garnish": "Mint bouquet", "method": "Muddle mint with syrup, add bourbon and crushed ice, stir until frosty."}, {"name": "Mojito", "family": "Mojito", "group": "Contemporary classic", "source": "IBA", "bottles": [{"amt": "1½ oz", "label": "White rum", "cats": ["rum_white"]}], "onhand": ["1 oz lime juice", "2 tsp sugar", "6 mint leaves", "Top with soda water"], "garnish": "Mint sprig, lime", "method": "Muddle mint with sugar and lime, add rum and ice, top with soda."}, {"name": "Moscow Mule", "family": "Mule", "group": "Contemporary classic", "source": "IBA", "bottles": [{"amt": "1½ oz", "label": "Vodka", "cats": ["vodka"]}], "onhand": ["4 oz ginger beer", "½ oz lime juice"], "garnish": "Lime slice", "method": "Build over ice in a copper mug."}, {"name": "Piña Colada", "family": "Piña Colada", "group": "Contemporary classic", "source": "IBA", "bottles": [{"amt": "1½ oz", "label": "White or coconut rum", "cats": ["rum_white", "coconut_rum"]}], "onhand": ["1 oz coconut cream", "1½ oz pineapple juice"], "garnish": "Pineapple slice", "method": "Blend with ice or shake hard, pour into a hurricane glass."}, {"name": "Pisco Sour", "family": "Sour", "group": "Contemporary classic", "source": "IBA", "bottles": [{"amt": "2 oz", "label": "Pisco", "cats": ["pisco"]}], "onhand": ["1 oz lime juice", "¾ oz simple syrup", "Egg white"], "garnish": "Angostura drops", "method": "Dry shake, shake with ice, strain into a chilled glass."}, {"name": "Rabo de Galo", "family": "Manhattan", "group": "Contemporary classic", "source": "IBA", "bottles": [{"amt": "1½ oz", "label": "Cachaça", "cats": ["cachaca"]}, {"amt": "¾ oz", "label": "Sweet vermouth", "cats": ["sweet_vermouth"]}, {"amt": "¼ oz", "label": "Cynar", "cats": ["cynar"]}], "onhand": [], "garnish": "Orange peel", "method": "Stir with ice, strain over ice."}, {"name": "Sea Breeze", "family": "Sea Breeze", "group": "Contemporary classic", "source": "IBA", "bottles": [{"amt": "1½ oz", "label": "Vodka", "cats": ["vodka"]}], "onhand": ["4 oz cranberry juice", "1 oz grapefruit juice"], "garnish": "Lime wedge", "method": "Build over ice in a highball."}, {"name": "Sex on the Beach", "family": "Sex on the Beach", "group": "Contemporary classic", "source": "IBA", "bottles": [{"amt": "1½ oz", "label": "Vodka", "cats": ["vodka"]}, {"amt": "¾ oz", "label": "Peach schnapps", "cats": ["peach_schnapps"]}], "onhand": ["1½ oz orange juice", "1½ oz cranberry juice"], "garnish": "Orange slice", "method": "Build over ice in a highball."}, {"name": "Singapore Sling", "family": "Sling", "group": "Contemporary classic", "source": "IBA", "bottles": [{"amt": "1 oz", "label": "Gin", "cats": ["gin_london_dry", "gin_other"]}, {"amt": "½ oz", "label": "Cherry liqueur", "cats": ["cherry_liqueur"]}, {"amt": "¼ oz", "label": "Orange liqueur", "cats": ["orange_liqueur"]}, {"amt": "¼ oz", "label": "Bénédictine", "cats": ["benedictine"]}], "onhand": ["4 oz pineapple juice", "½ oz lime juice", "⅓ oz grenadine", "Dash of Angostura"], "garnish": "Pineapple, cherry", "method": "Shake with ice, strain into a tall glass over ice."}, {"name": "Tequila Sunrise", "family": "Tequila Sunrise", "group": "Contemporary classic", "source": "IBA", "bottles": [{"amt": "1½ oz", "label": "Tequila", "cats": ["tequila_blanco", "tequila_reposado"]}], "onhand": ["3 oz orange juice", "½ oz grenadine"], "garnish": "Orange slice", "method": "Build tequila and juice over ice, sink the grenadine."}, {"name": "Vesper", "family": "Martini", "group": "Contemporary classic", "source": "IBA", "bottles": [{"amt": "2 oz", "label": "Gin", "cats": ["gin_london_dry", "gin_other"]}, {"amt": "½ oz", "label": "Vodka", "cats": ["vodka"]}, {"amt": "¼ oz", "label": "Lillet Blanc", "cats": ["lillet"]}], "onhand": [], "garnish": "Lemon peel", "method": "Shake with ice, strain into a chilled martini glass."}, {"name": "Cardinale", "family": "Negroni", "group": "Contemporary classic", "source": "IBA", "bottles": [{"amt": "1 oz", "label": "Gin", "cats": ["gin_london_dry", "gin_other"]}, {"amt": "½ oz", "label": "Dry vermouth", "cats": ["dry_vermouth"]}, {"amt": "1 oz", "label": "Campari", "cats": ["campari"]}], "onhand": [], "garnish": "Lemon peel", "method": "Stir with ice, strain over ice."}, {"name": "Zombie", "family": "Zombie", "group": "Contemporary classic", "source": "IBA", "bottles": [{"amt": "1½ oz", "label": "Dark Jamaican rum", "cats": ["rum_dark", "rum_aged"]}, {"amt": "1½ oz", "label": "Gold rum", "cats": ["rum_aged"]}, {"amt": "1 oz", "label": "Overproof Demerara rum", "cats": ["rum_overproof"]}, {"amt": "½ oz", "label": "Falernum", "cats": ["falernum"]}, {"amt": "1 tsp", "label": "Absinthe", "cats": ["absinthe"]}], "onhand": ["¾ oz lime juice", "½ oz grapefruit juice", "¼ oz cinnamon syrup", "1 tsp grenadine", "Dash of Angostura"], "garnish": "Mint sprig", "method": "Blend briefly with crushed ice or shake, pour into a tall glass."}, {"name": "Bee's Knees", "family": "Sour", "group": "New era", "source": "IBA", "bottles": [{"amt": "2 oz", "label": "Gin", "cats": ["gin_london_dry", "gin_other"]}], "onhand": ["¾ oz honey syrup", "¾ oz lemon juice"], "garnish": "Lemon peel", "method": "Shake with ice, strain into a chilled coupe."}, {"name": "Bramble", "family": "Bramble", "group": "New era", "source": "IBA", "bottles": [{"amt": "1½ oz", "label": "Gin", "cats": ["gin_london_dry", "gin_other"]}, {"amt": "½ oz", "label": "Blackberry liqueur", "cats": ["blackberry_liqueur"]}], "onhand": ["¾ oz lemon juice", "½ oz simple syrup"], "garnish": "Blackberry, lemon slice", "method": "Shake gin, lemon, and syrup, pour over crushed ice, drizzle the liqueur on top."}, {"name": "Canchanchara", "family": "Canchanchara", "group": "New era", "source": "IBA", "bottles": [{"amt": "2 oz", "label": "White rum", "cats": ["rum_white"]}], "onhand": ["½ oz honey", "½ oz lime juice"], "garnish": "Lime wedge", "method": "Stir honey and lime in a glass, add rum and ice."}, {"name": "Chartreuse Swizzle", "family": "Swizzle", "group": "New era", "source": "IBA", "bottles": [{"amt": "1¼ oz", "label": "Green Chartreuse", "cats": ["green_chartreuse"]}, {"amt": "½ oz", "label": "Falernum", "cats": ["falernum"]}], "onhand": ["1 oz pineapple juice", "¾ oz lime juice"], "garnish": "Mint sprig, nutmeg", "method": "Swizzle with crushed ice in a tall glass."}, {"name": "Dark 'n' Stormy", "family": "Mule", "group": "New era", "source": "IBA", "bottles": [{"amt": "2 oz", "label": "Dark rum", "cats": ["rum_dark"]}], "onhand": ["4 oz ginger beer"], "garnish": "Lime wedge", "method": "Fill a highball with ice and ginger beer, float the rum."}, {"name": "Don's Special Daiquiri", "family": "Daiquiri", "group": "New era", "source": "IBA", "bottles": [{"amt": "1½ oz", "label": "White rum", "cats": ["rum_white"]}, {"amt": "½ oz", "label": "Gold Jamaican rum", "cats": ["rum_aged", "rum_dark"]}], "onhand": ["½ oz passion fruit syrup", "½ oz honey syrup", "¾ oz lime juice", "Dash of Angostura"], "garnish": "", "method": "Blend briefly with crushed ice, pour into a coupe."}, {"name": "Espresso Martini", "family": "Espresso Martini", "group": "New era", "source": "IBA", "bottles": [{"amt": "1⅔ oz", "label": "Vodka", "cats": ["vodka"]}, {"amt": "⅔ oz", "label": "Coffee liqueur", "cats": ["coffee_liqueur"]}], "onhand": ["1 oz fresh espresso", "Dash of simple syrup"], "garnish": "3 coffee beans", "method": "Shake hard with ice, strain into a chilled coupe."}, {"name": "Fernandito", "family": "Fernandito", "group": "New era", "source": "IBA", "bottles": [{"amt": "2 oz", "label": "Fernet-Branca", "cats": ["fernet"]}], "onhand": ["Top with cola"], "garnish": "", "method": "Build over ice in a highball."}, {"name": "French Martini", "family": "French Martini", "group": "New era", "source": "IBA", "bottles": [{"amt": "1½ oz", "label": "Vodka", "cats": ["vodka"]}, {"amt": "½ oz", "label": "Raspberry liqueur", "cats": ["raspberry_liqueur"]}], "onhand": ["½ oz pineapple juice"], "garnish": "Lemon peel", "method": "Shake with ice, strain into a chilled cocktail glass."}, {"name": "Gin Basil Smash", "family": "Smash", "group": "New era", "source": "IBA", "bottles": [{"amt": "2 oz", "label": "Gin", "cats": ["gin_london_dry", "gin_other"]}], "onhand": ["¾ oz lemon juice", "½ oz simple syrup", "Handful of basil"], "garnish": "Basil sprig", "method": "Muddle basil, shake everything hard with ice, double-strain over ice."}, {"name": "Illegal", "family": "Illegal", "group": "New era", "source": "IBA", "bottles": [{"amt": "1 oz", "label": "Mezcal", "cats": ["mezcal"]}, {"amt": "½ oz", "label": "White overproof rum", "cats": ["rum_overproof"]}, {"amt": "½ oz", "label": "Falernum", "cats": ["falernum"]}, {"amt": "1 tsp", "label": "Maraschino liqueur", "cats": ["maraschino"]}], "onhand": ["¾ oz lime juice", "½ oz simple syrup", "Egg white (optional)"], "garnish": "", "method": "Dry shake, shake with ice, strain into a chilled glass."}, {"name": "Jungle Bird", "family": "Jungle Bird", "group": "New era", "source": "IBA", "bottles": [{"amt": "1½ oz", "label": "Blackstrap or dark rum", "cats": ["rum_dark", "rum_aged"]}, {"amt": "¾ oz", "label": "Campari", "cats": ["campari"]}], "onhand": ["1½ oz pineapple juice", "½ oz lime juice", "½ oz demerara syrup"], "garnish": "Pineapple wedge", "method": "Shake with ice, strain over ice in a rocks glass."}, {"name": "Missionary's Downfall", "family": "Missionary's Downfall", "group": "New era", "source": "IBA", "bottles": [{"amt": "1 oz", "label": "White rum", "cats": ["rum_white"]}, {"amt": "½ oz", "label": "Peach liqueur", "cats": ["peach_schnapps"]}], "onhand": ["½ oz honey syrup", "½ oz lime juice", "2 oz fresh pineapple", "Mint leaves"], "garnish": "Mint sprig", "method": "Blend with crushed ice, pour into a coupe."}, {"name": "Naked and Famous", "family": "Last Word", "group": "New era", "source": "IBA", "bottles": [{"amt": "¾ oz", "label": "Mezcal", "cats": ["mezcal"]}, {"amt": "¾ oz", "label": "Yellow Chartreuse", "cats": ["yellow_chartreuse"]}, {"amt": "¾ oz", "label": "Aperol", "cats": ["aperol"]}], "onhand": ["¾ oz lime juice"], "garnish": "", "method": "Shake with ice, strain into a chilled coupe."}, {"name": "New York Sour", "family": "Sour", "group": "New era", "source": "IBA", "bottles": [{"amt": "2 oz", "label": "Rye or bourbon", "cats": ["rye", "bourbon"]}], "onhand": ["1 oz lemon juice", "¾ oz simple syrup", "Egg white", "½ oz red wine float"], "garnish": "", "method": "Shake with ice, strain over ice, float the red wine."}, {"name": "Old Cuban", "family": "Mojito", "group": "New era", "source": "IBA", "bottles": [{"amt": "1½ oz", "label": "Aged rum", "cats": ["rum_aged"]}], "onhand": ["¾ oz lime juice", "1 oz simple syrup", "6 mint leaves", "2 dashes Angostura", "2 oz Champagne"], "garnish": "Mint sprig", "method": "Shake with mint, double-strain into a coupe, top with Champagne."}, {"name": "Paloma", "family": "Paloma", "group": "New era", "source": "IBA", "bottles": [{"amt": "1⅔ oz", "label": "Tequila", "cats": ["tequila_blanco", "tequila_reposado"]}], "onhand": ["½ oz lime juice", "Pinch of salt", "Top with grapefruit soda"], "garnish": "Lime slice", "method": "Build over ice in a highball, top with grapefruit soda."}, {"name": "Paper Plane", "family": "Paper Plane", "group": "New era", "source": "IBA", "bottles": [{"amt": "¾ oz", "label": "Bourbon", "cats": ["bourbon"]}, {"amt": "¾ oz", "label": "Aperol", "cats": ["aperol"]}, {"amt": "¾ oz", "label": "Amaro Nonino", "cats": ["amaro"]}], "onhand": ["¾ oz lemon juice"], "garnish": "", "method": "Shake with ice, strain into a chilled coupe."}, {"name": "Penicillin", "family": "Penicillin", "group": "New era", "source": "IBA", "bottles": [{"amt": "2 oz", "label": "Blended Scotch", "cats": ["scotch_blended", "scotch_single_malt"]}, {"amt": "¼ oz", "label": "Islay Scotch", "cats": ["scotch_islay"]}], "onhand": ["¾ oz lemon juice", "¾ oz honey-ginger syrup"], "garnish": "Candied ginger", "method": "Shake with ice, strain over ice, float the Islay Scotch."}, {"name": "Pisco Punch", "family": "Pisco Punch", "group": "New era", "source": "IBA", "bottles": [{"amt": "2 oz", "label": "Pisco", "cats": ["pisco"]}], "onhand": ["¾ oz pineapple gum syrup", "¾ oz lime juice"], "garnish": "Pineapple wedge", "method": "Shake with ice, strain into a chilled glass."}, {"name": "Porn Star Martini", "family": "Porn Star Martini", "group": "New era", "source": "IBA", "bottles": [{"amt": "1½ oz", "label": "Vanilla vodka", "cats": ["vodka"]}, {"amt": "½ oz", "label": "Passion fruit liqueur", "cats": ["passion_liqueur"]}], "onhand": ["1 oz passion fruit purée", "½ oz lime juice", "½ oz vanilla syrup", "Shot of prosecco on the side"], "garnish": "Half a passion fruit", "method": "Shake with ice, strain into a chilled coupe, serve prosecco alongside."}, {"name": "Russian Spring Punch", "family": "Russian Spring Punch", "group": "New era", "source": "IBA", "bottles": [{"amt": "1 oz", "label": "Vodka", "cats": ["vodka"]}, {"amt": "½ oz", "label": "Crème de cassis", "cats": ["cassis"]}], "onhand": ["¾ oz lemon juice", "¼ oz simple syrup", "Top with sparkling wine"], "garnish": "Lemon slice, blackberry", "method": "Shake vodka, cassis, lemon, syrup, strain over ice, top with sparkling wine."}, {"name": "Sherry Cobbler", "family": "Cobbler", "group": "New era", "source": "IBA", "bottles": [{"amt": "3 oz", "label": "Amontillado sherry", "cats": ["sherry"]}], "onhand": ["½ oz simple syrup", "2 orange slices"], "garnish": "Berries, mint", "method": "Shake with the orange slices and ice, pour over crushed ice."}, {"name": "Southside", "family": "Southside", "group": "New era", "source": "IBA", "bottles": [{"amt": "2 oz", "label": "Gin", "cats": ["gin_london_dry", "gin_other"]}], "onhand": ["1 oz lime juice", "½ oz simple syrup", "Mint leaves"], "garnish": "Mint sprig", "method": "Shake with mint and ice, double-strain into a chilled coupe."}, {"name": "Spicy Fifty", "family": "Spicy Fifty", "group": "New era", "source": "IBA", "bottles": [{"amt": "1½ oz", "label": "Vanilla vodka", "cats": ["vodka"]}, {"amt": "½ oz", "label": "Elderflower liqueur", "cats": ["elderflower"]}], "onhand": ["½ oz lime juice", "½ oz honey syrup", "2 thin slices red chili"], "garnish": "Red chili", "method": "Shake with ice, double-strain into a chilled cocktail glass."}, {"name": "Spritz", "family": "Spritz", "group": "New era", "source": "IBA", "bottles": [{"amt": "2 oz", "label": "Aperol", "cats": ["aperol"]}], "onhand": ["3 oz prosecco", "Splash of soda water"], "garnish": "Orange slice", "method": "Build over ice in a wine glass."}, {"name": "Suffering Bastard", "family": "Mule", "group": "New era", "source": "IBA", "bottles": [{"amt": "1 oz", "label": "Gin", "cats": ["gin_london_dry", "gin_other"]}, {"amt": "1 oz", "label": "Brandy", "cats": ["cognac", "brandy"]}], "onhand": ["½ oz lime juice", "2 dashes Angostura", "Top with ginger beer"], "garnish": "Mint sprig, orange slice", "method": "Shake gin, brandy, lime, and bitters, strain over ice, top with ginger beer."}, {"name": "Three Dots and a Dash", "family": "Three Dots", "group": "New era", "source": "IBA", "bottles": [{"amt": "1½ oz", "label": "Rhum agricole", "cats": ["rum_agricole"]}, {"amt": "½ oz", "label": "Aged Demerara rum", "cats": ["rum_aged", "rum_dark"]}, {"amt": "¼ oz", "label": "Falernum", "cats": ["falernum"]}, {"amt": "¼ oz", "label": "Allspice dram", "cats": ["allspice_dram"]}], "onhand": ["½ oz lime juice", "½ oz orange juice", "½ oz honey syrup", "Dash of Angostura"], "garnish": "3 cherries and a pineapple stick", "method": "Blend briefly with crushed ice, pour into a tall glass."}, {"name": "Tipperary", "family": "Manhattan", "group": "New era", "source": "IBA", "bottles": [{"amt": "1½ oz", "label": "Irish whiskey", "cats": ["irish"]}, {"amt": "¾ oz", "label": "Sweet vermouth", "cats": ["sweet_vermouth"]}, {"amt": "½ oz", "label": "Green Chartreuse", "cats": ["green_chartreuse"]}], "onhand": ["2 dashes Angostura"], "garnish": "Orange peel", "method": "Stir with ice, strain into a chilled coupe."}, {"name": "Tommy's Margarita", "family": "Margarita", "group": "New era", "source": "IBA", "bottles": [{"amt": "2 oz", "label": "Tequila", "cats": ["tequila_blanco", "tequila_reposado"]}], "onhand": ["1 oz lime juice", "½ oz agave syrup"], "garnish": "", "method": "Shake with ice, strain over ice."}, {"name": "Trinidad Sour", "family": "Sour", "group": "New era", "source": "IBA", "bottles": [{"amt": "½ oz", "label": "Rye", "cats": ["rye", "bourbon"]}], "onhand": ["1½ oz Angostura bitters", "1 oz orgeat", "¾ oz lemon juice"], "garnish": "", "method": "Shake with ice, strain into a chilled coupe."}, {"name": "Ve.n.to", "family": "Ve.n.to", "group": "New era", "source": "IBA", "bottles": [{"amt": "1½ oz", "label": "Grappa", "cats": ["grappa"]}], "onhand": ["¾ oz lemon juice", "½ oz honey syrup", "½ oz chamomile syrup", "Egg white"], "garnish": "Grapes", "method": "Dry shake, shake with ice, strain into a chilled glass."}, {"name": "Left Hand", "family": "Negroni", "group": "Daniel's picks", "source": "Daniel's request", "bottles": [{"amt": "1½ oz", "label": "Bourbon", "cats": ["bourbon"]}, {"amt": "¾ oz", "label": "Campari", "cats": ["campari"]}, {"amt": "¾ oz", "label": "Sweet vermouth", "cats": ["sweet_vermouth"]}], "onhand": ["2 dashes chocolate bitters"], "garnish": "Cherry", "method": "Stir with ice, strain into a chilled coupe."}, {"name": "Oaxaca Old Fashioned", "family": "Old Fashioned", "group": "Daniel's picks", "source": "Daniel's request", "bottles": [{"amt": "1½ oz", "label": "Reposado tequila", "cats": ["tequila_reposado", "tequila_blanco"]}, {"amt": "½ oz", "label": "Mezcal", "cats": ["mezcal"]}], "onhand": ["1 tsp agave syrup", "2 dashes Angostura"], "garnish": "Flamed orange peel", "method": "Stir with ice, strain over a large cube."}, {"name": "Spicy Margarita", "family": "Margarita", "group": "Daniel's picks", "source": "Daniel's request", "bottles": [{"amt": "2 oz", "label": "Spicy tequila (or blanco plus jalapeño)", "cats": ["tequila_spicy", "tequila_blanco"]}, {"amt": "½ oz", "label": "Orange liqueur", "cats": ["orange_liqueur"]}], "onhand": ["1 oz lime juice", "½ oz agave syrup", "2 jalapeño slices if your tequila isn't spicy"], "garnish": "Tajín or salt rim, jalapeño", "method": "Muddle jalapeño if using, shake with ice, strain over ice."}, {"name": "Painkiller", "family": "Painkiller", "group": "Daniel's picks", "source": "Tiki classic", "bottles": [{"amt": "2 oz", "label": "Navy or dark rum", "cats": ["rum_dark", "rum_aged"]}], "onhand": ["4 oz pineapple juice", "1 oz orange juice", "1 oz coconut cream"], "garnish": "Grated nutmeg", "method": "Shake with ice, pour into a tall glass with crushed ice."}, {"name": "Whiskey Sour (How to Drink)", "family": "Whiskey Sour", "group": "How to Drink", "source": "How to Drink", "bottles": [{"amt": "2 oz", "label": "Whiskey", "cats": ["bourbon", "rye"]}], "onhand": ["¾ oz lemon juice", "½ oz simple syrup", "1 egg white", "Bitters"], "garnish": "Bitters on the foam", "method": "Dry shake, shake with ice, strain."}, {"name": "French 75 (How to Drink)", "family": "French 75", "group": "How to Drink", "source": "How to Drink", "bottles": [{"amt": "2 oz", "label": "Gin", "cats": ["gin_london_dry", "gin_other"]}, {"amt": "2 dashes", "label": "Absinthe", "cats": ["absinthe"]}], "onhand": ["1 oz lemon juice", "½ oz gomme or simple syrup", "Top with Champagne"], "garnish": "", "method": "Shake everything but the Champagne, strain into a flute, top with Champagne."}, {"name": "Ramos Gin Fizz (How to Drink)", "family": "Ramos Gin Fizz", "group": "How to Drink", "source": "How to Drink", "bottles": [{"amt": "2 oz", "label": "Gin", "cats": ["gin_london_dry", "gin_other"]}], "onhand": ["¾ oz lemon juice", "¾ oz lime juice", "¼ oz simple syrup", "1 oz heavy cream", "1 egg white", "3 drops orange flower water", "Top with seltzer"], "garnish": "", "method": "Dry shake, shake long with ice, strain into a highball, top with seltzer."}, {"name": "Manhattan (How to Drink)", "family": "Manhattan", "group": "How to Drink", "source": "How to Drink", "bottles": [{"amt": "2 oz", "label": "Rye", "cats": ["rye", "bourbon"]}, {"amt": "1 oz", "label": "Sweet vermouth", "cats": ["sweet_vermouth"]}], "onhand": ["2 dashes bitters"], "garnish": "Cherry", "method": "Stir with ice, strain into a chilled coupe."}, {"name": "Sidecar (How to Drink)", "family": "Sidecar", "group": "How to Drink", "source": "How to Drink", "bottles": [{"amt": "1½ oz", "label": "Cognac", "cats": ["cognac", "brandy"]}, {"amt": "¾ oz", "label": "Orange curaçao", "cats": ["orange_liqueur"]}], "onhand": ["¾ oz lemon juice"], "garnish": "Optional sugar rim", "method": "Shake with ice, strain into a sugar-rimmed coupe."}, {"name": "Mai Tai (How to Drink)", "family": "Mai Tai", "group": "How to Drink", "source": "How to Drink", "bottles": [{"amt": "1 oz", "label": "Jamaican rum", "cats": ["rum_aged", "rum_dark"]}, {"amt": "1 oz", "label": "Rhum agricole", "cats": ["rum_agricole", "rum_aged"]}, {"amt": "½ oz", "label": "Dry curaçao", "cats": ["orange_liqueur"]}], "onhand": ["½ oz orgeat", "¼ oz rock candy syrup", "1 oz lime juice"], "garnish": "Mint sprig", "method": "Shake and serve over crushed ice."}, {"name": "Clover Club (How to Drink)", "family": "Clover Club", "group": "How to Drink", "source": "How to Drink", "bottles": [{"amt": "2 oz", "label": "Gin", "cats": ["gin_london_dry", "gin_other"]}], "onhand": ["½ oz raspberry syrup", "¾ oz lemon juice", "1 egg white"], "garnish": "", "method": "Dry shake, then shake with ice, strain into a chilled coupe."}, {"name": "Aviation (How to Drink)", "family": "Aviation", "group": "How to Drink", "source": "How to Drink", "bottles": [{"amt": "2 oz", "label": "Gin", "cats": ["gin_london_dry", "gin_other"]}, {"amt": "½ oz", "label": "Maraschino liqueur", "cats": ["maraschino"]}, {"amt": "¼ oz", "label": "Crème de violette", "cats": ["violette"]}], "onhand": ["¾ oz lemon juice"], "garnish": "Cherry", "method": "Shake with ice, strain into a chilled coupe."}, {"name": "Champagne Cocktail (How to Drink)", "family": "Champagne Cocktail", "group": "How to Drink", "source": "How to Drink", "bottles": [{"amt": "½ oz", "label": "Cognac", "cats": ["cognac", "brandy"]}], "onhand": ["1 barspoon gomme syrup", "2 dashes aromatic bitters", "Dash of absinthe (optional)", "Top with Champagne"], "garnish": "Cherry or lemon twist", "method": "Stir, pour into a coupe or flute, top with Champagne."}, {"name": "Sazerac (How to Drink)", "family": "Sazerac", "group": "How to Drink", "source": "How to Drink", "bottles": [{"amt": "2 oz", "label": "Rye", "cats": ["rye", "bourbon"]}, {"amt": "Rinse", "label": "Absinthe", "cats": ["absinthe"]}], "onhand": ["2 barspoons simple syrup", "2 barspoons Peychaud's"], "garnish": "Lemon twist", "method": "Rinse a chilled glass with absinthe. Stir the rest with ice, strain in."}, {"name": "Mint Julep (How to Drink)", "family": "Mint Julep", "group": "How to Drink", "source": "How to Drink", "bottles": [{"amt": "3 oz", "label": "Bottled-in-bond bourbon", "cats": ["bourbon"]}], "onhand": ["½ oz simple syrup", "2 dashes Angostura", "A bunch of mint"], "garnish": "Mint bouquet", "method": "Muddle mint gently with syrup, add bourbon and crushed ice, stir until frosty."}, {"name": "Paloma (How to Drink)", "family": "Paloma", "group": "How to Drink", "source": "How to Drink", "bottles": [{"amt": "2 oz", "label": "Reposado tequila", "cats": ["tequila_reposado", "tequila_blanco"]}], "onhand": ["3 oz grapefruit soda", "4 lime quarters", "2 grapefruit slices", "6 mint leaves", "Pinch of salt"], "garnish": "", "method": "Muddle lime, grapefruit, mint, and salt, add tequila and ice, top with soda."}, {"name": "Caipirinha (How to Drink)", "family": "Caipirinha", "group": "How to Drink", "source": "How to Drink", "bottles": [{"amt": "2 oz", "label": "Cachaça", "cats": ["cachaca"]}], "onhand": ["1 lime, quartered", "2 barspoons superfine sugar"], "garnish": "", "method": "Muddle lime and sugar, add cachaça and crushed ice, stir."}, {"name": "Sherry Cobbler (How to Drink)", "family": "Sherry Cobbler", "group": "How to Drink", "source": "How to Drink", "bottles": [{"amt": "4 oz", "label": "Sherry", "cats": ["sherry"]}], "onhand": ["½ oz gum syrup", "Orange slices"], "garnish": "Mint, berries", "method": "Shake with the orange slices and ice, pour over crushed ice."}, {"name": "Missionary's Downfall (How to Drink)", "family": "Missionary's Downfall", "group": "How to Drink", "source": "How to Drink", "bottles": [{"amt": "1 oz", "label": "Gold Puerto Rican rum", "cats": ["rum_aged", "rum_white"]}, {"amt": "½ oz", "label": "Peach brandy", "cats": ["peach_schnapps"]}], "onhand": ["½ oz lime juice", "½ oz honey syrup", "¼ cup fresh pineapple", "10–12 mint leaves"], "garnish": "Mint sprig", "method": "Blend with crushed ice, pour into a coupe."}, {"name": "Cloud of Ether", "family": "Aviation", "group": "How to Drink", "source": "How to Drink", "bottles": [{"amt": "2 oz", "label": "Gin", "cats": ["gin_london_dry", "gin_other"]}, {"amt": "½ oz", "label": "Maraschino liqueur", "cats": ["maraschino"]}, {"amt": "¼ oz", "label": "Crème de violette", "cats": ["violette"]}], "onhand": ["1 oz lemon juice", "¼ oz simple syrup", "1 egg white"], "garnish": "", "method": "Dry shake, shake with ice, strain into a chilled coupe."}, {"name": "Tom Collins", "family": "Collins", "group": "How to Drink", "source": "How to Drink", "bottles": [{"amt": "2 oz", "label": "Gin", "cats": ["gin_old_tom", "gin_london_dry"]}], "onhand": ["1 oz lemon juice", "¼ oz simple syrup", "Top with seltzer"], "garnish": "Lemon wheel", "method": "Build over ice in a Collins glass, top with seltzer."}, {"name": "Improved Tom Collins", "family": "Collins", "group": "How to Drink", "source": "How to Drink", "bottles": [{"amt": "2 oz", "label": "Gin", "cats": ["gin_london_dry", "gin_other"]}, {"amt": "½ oz", "label": "Maraschino liqueur", "cats": ["maraschino"]}, {"amt": "2 dashes", "label": "Absinthe", "cats": ["absinthe"]}], "onhand": ["1 oz lemon juice", "¼ oz simple syrup", "Top with soda water"], "garnish": "", "method": "Shake everything but the soda, strain over ice, top with soda."}, {"name": "Improved Whiskey Cocktail", "family": "Improved Whiskey Cocktail", "group": "How to Drink", "source": "How to Drink", "bottles": [{"amt": "2 oz", "label": "Rye", "cats": ["rye", "bourbon"]}, {"amt": "¼ oz", "label": "Maraschino liqueur", "cats": ["maraschino"]}, {"amt": "Dash", "label": "Absinthe", "cats": ["absinthe"]}], "onhand": ["Boker's or aromatic bitters"], "garnish": "Lemon peel", "method": "Stir with ice, strain over a large cube."}, {"name": "Whiskey Smash", "family": "Whiskey Smash", "group": "How to Drink", "source": "How to Drink", "bottles": [{"amt": "2 oz", "label": "Rye", "cats": ["rye", "bourbon"]}], "onhand": ["8–12 mint leaves", "¼ oz gomme syrup"], "garnish": "Mint sprig", "method": "Muddle mint with syrup, add rye and crushed ice, stir."}, {"name": "Gin Whisper", "family": "Gin Whisper", "group": "How to Drink", "source": "How to Drink", "bottles": [{"amt": "2 oz", "label": "Gin", "cats": ["gin_london_dry", "gin_other"]}, {"amt": "¼ oz", "label": "St-Germain", "cats": ["elderflower"]}], "onhand": ["¼ oz simple syrup", "Muddled mint", "1 egg white"], "garnish": "", "method": "Muddle mint, dry shake, shake with ice, strain."}, {"name": "Smoked Rosemary Gin and Tonic", "family": "Smoked Rosemary Gin and Tonic", "group": "How to Drink", "source": "How to Drink", "bottles": [{"amt": "2 oz", "label": "Gin", "cats": ["gin_london_dry", "gin_other"]}], "onhand": ["1 oz tonic syrup", "¼ oz lime juice", "Top with seltzer", "Fresh rosemary, smoked"], "garnish": "Rosemary sprig", "method": "Smoke the rosemary in the glass, build over ice, top with seltzer."}, {"name": "Fog Cutter", "family": "Fog Cutter", "group": "How to Drink", "source": "How to Drink", "bottles": [{"amt": "2 oz", "label": "Rum", "cats": ["rum_white", "rum_aged"]}, {"amt": "1 oz", "label": "Cognac", "cats": ["cognac", "brandy"]}, {"amt": "½ oz", "label": "Gin", "cats": ["gin_london_dry", "gin_other"]}, {"amt": "½ oz", "label": "Sherry (float)", "cats": ["sherry"]}], "onhand": ["½ oz orgeat", "1 oz orange juice", "2 oz lemon juice"], "garnish": "", "method": "Shake everything but the sherry, strain over ice, float the sherry."}, {"name": "Thanksgiving Cobbler", "family": "Thanksgiving Cobbler", "group": "How to Drink", "source": "How to Drink", "bottles": [{"amt": "1½ oz", "label": "Cognac", "cats": ["cognac", "brandy"]}], "onhand": ["¼ oz simple or gomme syrup", "Muddled cranberries", "Top with about 3 oz Champagne"], "garnish": "", "method": "Muddle cranberries with syrup and cognac, add ice, top with Champagne."}, {"name": "Negroni Bianco", "family": "Negroni", "group": "How to Drink", "source": "How to Drink", "bottles": [{"amt": "1½ oz", "label": "Gin", "cats": ["gin_london_dry", "gin_other"]}, {"amt": "1½ oz", "label": "Luxardo Bitter Bianco", "cats": ["bitter_bianco"]}, {"amt": "¾ oz", "label": "Blanc vermouth", "cats": ["blanc_vermouth"]}], "onhand": [], "garnish": "Orange twist, cherry", "method": "Stir with ice, strain."}, {"name": "Amaretto Sour", "family": "Amaretto Sour", "group": "How to Drink", "source": "How to Drink", "bottles": [{"amt": "1½ oz", "label": "Amaretto", "cats": ["amaretto"]}, {"amt": "¾ oz", "label": "Bourbon", "cats": ["bourbon"]}], "onhand": ["1 oz lemon juice", "¼ oz rich simple syrup", "1 egg white"], "garnish": "Cherries", "method": "Dry shake, shake with ice, strain over ice."}, {"name": "Han Solo's Shot First", "family": "Han Solo's Shot First", "group": "How to Drink", "source": "How to Drink", "bottles": [{"amt": "2 oz", "label": "Rye", "cats": ["rye", "bourbon"]}, {"amt": "1 oz", "label": "Green Chartreuse", "cats": ["green_chartreuse"]}, {"amt": "1 oz", "label": "Sweet vermouth (Carpano Antica)", "cats": ["sweet_vermouth"]}], "onhand": [], "garnish": "", "method": "Stir, smoke with hickory if you like, serve over a big cube."}, {"name": "Eggnog", "family": "Eggnog", "group": "How to Drink", "source": "How to Drink", "bottles": [{"amt": "2 oz", "label": "Bourbon", "cats": ["bourbon"]}, {"amt": "½ oz", "label": "Cognac", "cats": ["cognac", "brandy"]}, {"amt": "½ oz", "label": "Maraschino liqueur", "cats": ["maraschino"]}], "onhand": ["½ oz simple syrup", "1 whole egg", "Top with milk"], "garnish": "Nutmeg, orange peel", "method": "Dry shake, shake with ice, strain into a double rocks glass, top with milk."}, {"name": "El Presidente", "family": "El Presidente", "group": "How to Drink", "source": "How to Drink", "bottles": [{"amt": "1½ oz", "label": "Rum", "cats": ["rum_aged", "rum_white"]}, {"amt": "1½ oz", "label": "Lillet Blanc", "cats": ["lillet"]}, {"amt": "¼ oz", "label": "Orange curaçao", "cats": ["orange_liqueur"]}], "onhand": ["Barspoon of grenadine"], "garnish": "Orange twist", "method": "Stir with ice, strain into a chilled coupe."}, {"name": "Jersey Sunset", "family": "Jersey Sunset", "group": "How to Drink", "source": "How to Drink", "bottles": [{"amt": "2 oz", "label": "Applejack", "cats": ["apple_brandy"]}], "onhand": ["½ oz gomme syrup", "Float of bitters"], "garnish": "Lemon twist", "method": "Stir over ice, pour over cracked ice, float the bitters."}, {"name": "Hot Toddy", "family": "Hot Toddy", "group": "How to Drink", "source": "How to Drink", "bottles": [{"amt": "1½ oz", "label": "Blended Scotch", "cats": ["scotch_blended", "scotch_single_malt"]}], "onhand": ["½ oz lemon juice", "1 oz honey syrup", "Hot water", "Cinnamon stick, star anise"], "garnish": "Clove-studded lemon wheel, nutmeg", "method": "Build in a warm mug, top with hot water."}, {"name": "St. Denis Sazerac", "family": "Sazerac", "group": "How to Drink", "source": "How to Drink", "bottles": [{"amt": "2 oz", "label": "Cognac", "cats": ["cognac", "brandy"]}, {"amt": "Rinse", "label": "Absinthe", "cats": ["absinthe"]}], "onhand": ["1 demerara sugar cube", "2 dashes Bogart's or aromatic bitters"], "garnish": "Lemon twist", "method": "Rinse a chilled glass with absinthe. Stir the rest with ice, strain in."}, {"name": "Cobra Fang", "family": "Cobra Fang", "group": "How to Drink", "source": "How to Drink", "bottles": [{"amt": "½ oz", "label": "Dark rum", "cats": ["rum_dark"]}, {"amt": "½ oz", "label": "151 rum", "cats": ["rum_overproof"]}, {"amt": "½ oz", "label": "Falernum", "cats": ["falernum"]}, {"amt": "Dash", "label": "Absinthe", "cats": ["absinthe"]}], "onhand": ["½ oz orange juice", "½ oz lime juice", "¼ oz fassionola syrup", "Dash of Angostura", "Dash of grenadine"], "garnish": "Lime wheel, cinnamon stick", "method": "Flash-blend with crushed ice, pour into a tiki mug."}, {"name": "QB Cooler", "family": "QB Cooler", "group": "How to Drink", "source": "How to Drink", "bottles": [{"amt": "1 oz", "label": "Jamaican rum (Appleton)", "cats": ["rum_aged"]}, {"amt": "1 oz", "label": "White rum", "cats": ["rum_white"]}, {"amt": "½ oz", "label": "Aged Demerara rum", "cats": ["rum_aged", "rum_dark"]}, {"amt": "¼ oz", "label": "Falernum", "cats": ["falernum"]}], "onhand": ["1 oz orange juice", "½ oz lime juice", "½ oz honey syrup", "½ tsp ginger syrup", "2 dashes Angostura", "1 oz club soda (optional)"], "garnish": "", "method": "Flash-blend with crushed ice, pour into a tall glass."}, {"name": "Earl Grey MarTEAni", "family": "Earl Grey MarTEAni", "group": "How to Drink", "source": "How to Drink", "bottles": [{"amt": "1½ oz", "label": "Earl Grey–infused gin", "cats": ["gin_london_dry", "gin_other"]}], "onhand": ["1 oz simple syrup", "¾ oz lemon juice", "1 egg white"], "garnish": "Lemon twist", "method": "Infuse gin with Earl Grey tea, dry shake, shake with ice, strain."}, {"name": "Gordon's Cup", "family": "Gordon's Cup", "group": "How to Drink", "source": "How to Drink", "bottles": [{"amt": "2 oz", "label": "Gin", "cats": ["gin_london_dry", "gin_other"]}], "onhand": ["8 lime wedges", "4 cucumber wheels", "¾ oz simple syrup", "Pinch of salt and pepper"], "garnish": "", "method": "Muddle lime and cucumber with syrup, add gin and crushed ice, stir."}, {"name": "Pimm's Cup", "family": "Pimm's Cup", "group": "How to Drink", "source": "How to Drink", "bottles": [{"amt": "2 oz", "label": "Pimm's No. 1", "cats": ["pimms"]}], "onhand": ["Cucumber and apple ribbons", "3 lemon slices", "2 strawberry slices", "4 oz lemon-lime soda"], "garnish": "", "method": "Build over ice in a tall glass with the fruit."}, {"name": "Mr Black Coffee Cocktail", "family": "Mr Black Coffee Cocktail", "group": "How to Drink", "source": "How to Drink", "bottles": [{"amt": "1½ oz", "label": "Irish whiskey", "cats": ["irish"]}, {"amt": "3 oz", "label": "Coffee liqueur (Mr Black)", "cats": ["coffee_liqueur"]}], "onhand": ["Float of half-and-half"], "garnish": "Orange peel", "method": "Stir over ice, float the half-and-half."}, {"name": "Ginger Rogers #1", "family": "Ginger Rogers", "group": "How to Drink", "source": "How to Drink", "bottles": [{"amt": "¾ oz", "label": "Blanc vermouth", "cats": ["blanc_vermouth"]}, {"amt": "¾ oz", "label": "Apricot brandy", "cats": ["apricot_liqueur"]}, {"amt": "¾ oz", "label": "Gin", "cats": ["gin_london_dry", "gin_other"]}], "onhand": ["¼ oz lemon juice"], "garnish": "", "method": "Shake with ice, strain into a chilled coupe."}, {"name": "Ginger Rogers #2", "family": "Ginger Rogers", "group": "How to Drink", "source": "How to Drink", "bottles": [{"amt": "2 oz", "label": "Gin", "cats": ["gin_london_dry", "gin_other"]}], "onhand": ["10–12 mint leaves", "¾ oz ginger syrup", "¾ oz lemon juice", "2 oz ginger ale"], "garnish": "Mint sprig", "method": "Muddle mint with syrup, add gin and lemon, shake, strain over ice, top with ginger ale."}, {"name": "Grog", "family": "Grog", "group": "How to Drink", "source": "How to Drink", "bottles": [{"amt": "2 oz", "label": "Jamaican rum", "cats": ["rum_aged", "rum_dark"]}], "onhand": ["7–8 oz water", "½ lime", "2 spoonfuls sugar"], "garnish": "", "method": "Stir sugar, lime, and rum into the water."}, {"name": "The Wellerman", "family": "The Wellerman", "group": "How to Drink", "source": "How to Drink", "bottles": [{"amt": "2 oz", "label": "Aged Demerara rum (El Dorado 8)", "cats": ["rum_aged"]}], "onhand": ["1 oz lemon juice", "½ oz simple syrup", "Heaping spoon of matcha", "1 egg white"], "garnish": "Angostura on the foam", "method": "Dry shake, shake with ice, strain."}, {"name": "Nectar", "family": "Nectar", "group": "How to Drink", "source": "How to Drink", "bottles": [{"amt": "1½ oz", "label": "Aged rum", "cats": ["rum_aged"]}, {"amt": "¾ oz", "label": "St-Germain", "cats": ["elderflower"]}, {"amt": "1 barspoon", "label": "Bénédictine", "cats": ["benedictine"]}], "onhand": ["¾ oz rich honey syrup"], "garnish": "", "method": "Stir with ice, strain."}, {"name": "Ambrosia", "family": "Ambrosia", "group": "How to Drink", "source": "How to Drink", "bottles": [{"amt": "1 oz", "label": "Aged rum (Plantation 5)", "cats": ["rum_aged"]}, {"amt": "1 oz", "label": "Aged Jamaican rum (Appleton 12)", "cats": ["rum_aged", "rum_dark"]}, {"amt": "1 barspoon", "label": "Bénédictine", "cats": ["benedictine"]}], "onhand": ["½ oz honey syrup", "Shaved tonka bean"], "garnish": "", "method": "Stir with ice, strain."}, {"name": "Poison Ivy", "family": "Poison Ivy", "group": "How to Drink", "source": "How to Drink", "bottles": [{"amt": "1 oz", "label": "Blanco tequila", "cats": ["tequila_blanco", "tequila_reposado"]}, {"amt": "1 oz", "label": "Italicus", "cats": ["bergamot_liqueur"]}, {"amt": "1 oz", "label": "Green Chartreuse", "cats": ["green_chartreuse"]}], "onhand": ["2 inches cucumber, chopped", "1 oz lime juice"], "garnish": "", "method": "Muddle cucumber, shake with ice, double-strain."}, {"name": "Titan's Blood", "family": "Titan's Blood", "group": "How to Drink", "source": "How to Drink", "bottles": [{"amt": "1 oz", "label": "Mezcal", "cats": ["mezcal"]}, {"amt": "1 oz", "label": "Ancho Reyes", "cats": ["chile_liqueur"]}], "onhand": ["1½ oz Angostura bitters", "1 oz simple syrup"], "garnish": "", "method": "Shake with ice, strain."}, {"name": "Mega Potion", "family": "Mega Potion", "group": "How to Drink", "source": "How to Drink", "bottles": [{"amt": "1 oz", "label": "White rum", "cats": ["rum_white"]}, {"amt": "1 oz", "label": "Suze", "cats": ["gentian"]}, {"amt": "1 barspoon", "label": "Blue curaçao", "cats": ["orange_liqueur"]}], "onhand": ["½ oz honey syrup"], "garnish": "", "method": "Stir with ice, strain."}, {"name": "Vexx Milk", "family": "Vexx Milk", "group": "How to Drink", "source": "How to Drink", "bottles": [{"amt": "1 oz", "label": "Pastis", "cats": ["anise"]}, {"amt": "1 oz", "label": "Irish cream", "cats": ["irish_cream"]}], "onhand": ["4 dashes saline"], "garnish": "", "method": "Stir with ice, strain."}, {"name": "Tincture of Queen's Foil", "family": "Tincture of Queen's Foil", "group": "How to Drink", "source": "How to Drink", "bottles": [{"amt": "1½ oz", "label": "Citrus vodka", "cats": ["vodka"]}, {"amt": "1½ oz", "label": "Gin", "cats": ["gin_london_dry", "gin_other"]}, {"amt": "½ oz", "label": "Italicus", "cats": ["bergamot_liqueur"]}, {"amt": "¼ oz", "label": "Blue curaçao", "cats": ["orange_liqueur"]}], "onhand": ["½ oz simple syrup", "Hard dashes of Angostura"], "garnish": "", "method": "Shake with ice, strain."}]};
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth(), fs = firebase.firestore();
+  const snapDoc = s => ({ id: s.id, exists: s.exists, data: () => s.data(), metadata: s.metadata });
+  const docRef = p => {
+    if (p === "catalog/iba") return { onSnapshot: next => { setTimeout(() => next({ id: "iba", exists: true, data: () => CATALOG })); return () => {}; } };
+    const r = fs.doc(p);
+    return {
+      id: r.id, path: p,
+      get: async () => snapDoc(await r.get()),
+      set: body => r.set(body),
+      update: body => r.update(body),
+      delete: () => r.delete(),
+      onSnapshot: (next, err) => r.onSnapshot(s => next(snapDoc(s)), e => { denied(e); err && err(e); })
+    };
+  };
+  const collRef = c => ({
+    path: c,
+    doc: id => docRef(c + "/" + (id || fs.collection(c).doc().id)),
+    add: async body => docRef(c + "/" + (await fs.collection(c).add(body)).id),
+    onSnapshot: (next, err) => fs.collection(c).onSnapshot(q => {
+      const docs = q.docs.map(snapDoc);
+      next({ docs, size: docs.length, empty: !docs.length });
+    }, e => { denied(e); err && err(e); })
+  });
+  const db = { doc: docRef, collection: collRef };
+  const COLLS = ["bottles", "myRecipes", "prefs"];
+  window.cabinetBackup = {
+    export: async () => {
+      const out = {};
+      for (const c of COLLS) (await fs.collection(c).get()).forEach(d => { out[c + "/" + d.id] = d.data(); });
+      return JSON.stringify(out, null, 1);
+    },
+    import: async text => {
+      const d = JSON.parse(text);
+      if (typeof d !== "object" || !d) throw new Error("bad");
+      const batch = fs.batch();
+      for (const [p, body] of Object.entries(d)) if (COLLS.includes(p.split("/")[0]) && p.split("/").length === 2) batch.set(fs.doc(p), body);
+      await batch.commit();
+    }
+  };
+  // Sign-in gate
+  const gate = document.getElementById("gate");
+  let shown = false;
+  function denied(e) {
+    if (!e || e.code !== "permission-denied" || shown) return;
+    shown = true;
+    gate.hidden = false;
+    document.getElementById("gateMsg").textContent = `${auth.currentUser?.email || "This account"} doesn't have access to this Cabinet.`;
+    document.getElementById("gateIn").hidden = true;
+    document.getElementById("gateOut").hidden = false;
+  }
+  let resolveDb;
+  const ready = new Promise(r => { resolveDb = r; });
+  auth.onAuthStateChanged(u => {
+    if (u) { gate.hidden = true; document.getElementById("who").textContent = u.email; resolveDb(db); }
+    else { gate.hidden = false; }
+  });
+  document.getElementById("gateIn").onclick = async () => {
+    const p = new firebase.auth.GoogleAuthProvider();
+    try { await auth.signInWithPopup(p); }
+    catch (e) { if (e.code === "auth/popup-blocked" || e.code === "auth/operation-not-supported-in-this-environment") auth.signInWithRedirect(p); }
+  };
+  const out = () => auth.signOut().then(() => location.reload());
+  document.getElementById("gateOut").onclick = out;
+  document.getElementById("signOut").onclick = out;
+  window.claude = { use: async name => name === "db" ? ready : null };
+})();
+</script>
+<script>
+// Groups and categories. Recipes will ask for these category ids.
+const GROUPS = [
+  ["whiskey","Whiskey"],["gin","Gin"],["rum","Rum"],["agave","Tequila & mezcal"],["vodka","Vodka"],
+  ["brandy","Brandy"],["liqueur","Liqueurs"],["amaro","Amari & aperitivi"],["fortified","Vermouth & fortified wine"],["other","Other"]
+];
+const CATS = {
+  bourbon:["Bourbon","whiskey"], rye:["Rye whiskey","whiskey"], scotch_blended:["Blended Scotch","whiskey"],
+  scotch_single_malt:["Single malt Scotch","whiskey"], scotch_islay:["Islay Scotch (peated)","whiskey"],
+  irish:["Irish whiskey","whiskey"], japanese:["Japanese whisky","whiskey"], whiskey_other:["Other whiskey","whiskey"],
+  gin_london_dry:["London dry gin","gin"], gin_old_tom:["Old Tom gin","gin"], gin_other:["Other gin","gin"],
+  rum_white:["White rum","rum"], rum_aged:["Aged rum","rum"], rum_dark:["Dark rum","rum"],
+  rum_overproof:["Overproof rum","rum"], rum_agricole:["Rhum agricole","rum"], cachaca:["Cachaça","rum"], coconut_rum:["Coconut rum","rum"],
+  tequila_blanco:["Blanco tequila","agave"], tequila_reposado:["Reposado tequila","agave"],
+  tequila_anejo:["Añejo tequila","agave"], tequila_spicy:["Spicy tequila","agave"], mezcal:["Mezcal","agave"],
+  vodka:["Vodka","vodka"],
+  cognac:["Cognac","brandy"], brandy:["Brandy","brandy"], pisco:["Pisco","brandy"],
+  apple_brandy:["Apple brandy / Calvados","brandy"], grappa:["Grappa","brandy"],
+  orange_liqueur:["Orange liqueur","liqueur"], maraschino:["Maraschino liqueur","liqueur"],
+  amaretto:["Amaretto","liqueur"], coffee_liqueur:["Coffee liqueur","liqueur"],
+  elderflower:["Elderflower liqueur","liqueur"], green_chartreuse:["Green Chartreuse","liqueur"],
+  yellow_chartreuse:["Yellow Chartreuse","liqueur"], benedictine:["Bénédictine","liqueur"],
+  drambuie:["Drambuie","liqueur"], galliano:["Galliano","liqueur"], cassis:["Crème de cassis","liqueur"],
+  cacao_white:["White crème de cacao","liqueur"], cacao_dark:["Dark crème de cacao","liqueur"],
+  menthe_green:["Green crème de menthe","liqueur"], menthe_white:["White crème de menthe","liqueur"],
+  violette:["Crème de violette","liqueur"], cherry_liqueur:["Cherry liqueur","liqueur"],
+  apricot_liqueur:["Apricot liqueur","liqueur"], peach_schnapps:["Peach liqueur / schnapps","liqueur"], blackberry_liqueur:["Blackberry liqueur (crème de mûre)","liqueur"], passion_liqueur:["Passion fruit liqueur","liqueur"], falernum:["Falernum","liqueur"], allspice_dram:["Allspice dram","liqueur"],
+  irish_cream:["Irish cream","liqueur"], raspberry_liqueur:["Raspberry liqueur","liqueur"],
+  absinthe:["Absinthe","liqueur"], anise:["Anise liqueur (pastis, ouzo, sambuca)","liqueur"], limoncello:["Limoncello","liqueur"], bergamot_liqueur:["Bergamot liqueur (Italicus)","liqueur"], chile_liqueur:["Chile liqueur (Ancho Reyes)","liqueur"], pimms:["Pimm's","liqueur"],
+  liqueur_other:["Other liqueur","liqueur"],
+  campari:["Campari","amaro"], aperol:["Aperol","amaro"], fernet:["Fernet","amaro"],
+  amaro:["Amaro (Nonino, Averna, Montenegro…)","amaro"], cynar:["Cynar","amaro"], bitter_bianco:["Bitter bianco","amaro"], gentian:["Gentian aperitif (Suze)","amaro"],
+  sweet_vermouth:["Sweet vermouth","fortified"], dry_vermouth:["Dry vermouth","fortified"],
+  blanc_vermouth:["Blanc vermouth","fortified"], lillet:["Lillet / aperitif wine","fortified"],
+  sherry:["Sherry","fortified"], port:["Port","fortified"],
+  other:["Something else","other"]
+};
+// Common bottles and their categories.
+const BRANDS = `Buffalo Trace|bourbon;Maker's Mark|bourbon;Woodford Reserve|bourbon;Wild Turkey 101|bourbon;Wild Turkey|bourbon;Bulleit Bourbon|bourbon;Knob Creek|bourbon;Four Roses|bourbon;Elijah Craig|bourbon;Evan Williams|bourbon;Jim Beam|bourbon;Old Forester|bourbon;Eagle Rare|bourbon;Blanton's|bourbon;Basil Hayden|bourbon;Angel's Envy|bourbon;Weller|bourbon;Old Grand-Dad|bourbon;Larceny|bourbon;Michter's US*1 Bourbon|bourbon;Booker's|bourbon;Russell's Reserve|bourbon;Heaven Hill|bourbon;1792|bourbon;Jack Daniel's|whiskey_other;George Dickel|whiskey_other;Rittenhouse Rye|rye;Sazerac Rye|rye;Bulleit Rye|rye;Old Overholt|rye;Wild Turkey Rye|rye;Michter's Rye|rye;High West Rendezvous Rye|rye;Pikesville Rye|rye;WhistlePig|rye;Knob Creek Rye|rye;Templeton Rye|rye;Johnnie Walker Black|scotch_blended;Johnnie Walker Red|scotch_blended;Dewar's|scotch_blended;Monkey Shoulder|scotch_blended;Famous Grouse|scotch_blended;Chivas Regal|scotch_blended;Glenfiddich|scotch_single_malt;Glenlivet|scotch_single_malt;Macallan|scotch_single_malt;Glenmorangie|scotch_single_malt;Balvenie|scotch_single_malt;Oban|scotch_single_malt;Dalmore|scotch_single_malt;Laphroaig|scotch_islay;Lagavulin|scotch_islay;Ardbeg|scotch_islay;Bowmore|scotch_islay;Caol Ila|scotch_islay;Talisker|scotch_islay;Jameson|irish;Redbreast|irish;Bushmills|irish;Tullamore D.E.W.|irish;Powers|irish;Teeling|irish;Suntory Toki|japanese;Hibiki|japanese;Nikka From the Barrel|japanese;Yamazaki|japanese;Crown Royal|whiskey_other;Canadian Club|whiskey_other;Tanqueray|gin_london_dry;Beefeater|gin_london_dry;Bombay Sapphire|gin_london_dry;Gordon's|gin_london_dry;Sipsmith|gin_london_dry;Fords Gin|gin_london_dry;Plymouth Gin|gin_other;Hendrick's|gin_other;Aviation Gin|gin_other;The Botanist|gin_other;Monkey 47|gin_other;Roku|gin_other;Ransom Old Tom|gin_old_tom;Hayman's Old Tom|gin_old_tom;Bacardi Superior|rum_white;Plantation 3 Stars|rum_white;Flor de Caña 4|rum_white;Havana Club 3|rum_white;Don Q Cristal|rum_white;Cruzan Light|rum_white;Appleton Estate|rum_aged;Mount Gay|rum_aged;Diplomático|rum_aged;Plantation 5|rum_aged;El Dorado|rum_aged;Bacardi 8|rum_aged;Ron Zacapa|rum_aged;Smith & Cross|rum_overproof;Wray & Nephew|rum_overproof;Plantation O.F.T.D.|rum_overproof;Hamilton 151|rum_overproof;Gosling's Black Seal|rum_dark;Myers's|rum_dark;Cruzan Black Strap|rum_dark;Captain Morgan|rum_aged;Rhum J.M|rum_agricole;Rhum Clément|rum_agricole;Neisson|rum_agricole;Avuá|cachaca;Leblon|cachaca;Novo Fogo|cachaca;Espolòn Blanco|tequila_blanco;Espolòn Reposado|tequila_reposado;Olmeca Altos Plata|tequila_blanco;Fortaleza Blanco|tequila_blanco;Fortaleza Reposado|tequila_reposado;Siete Leguas|tequila_blanco;El Tesoro|tequila_blanco;Patrón Silver|tequila_blanco;Patrón Reposado|tequila_reposado;Patrón Añejo|tequila_anejo;Casamigos Blanco|tequila_blanco;Casamigos Reposado|tequila_reposado;Don Julio Blanco|tequila_blanco;Don Julio Reposado|tequila_reposado;Don Julio Añejo|tequila_anejo;Herradura Reposado|tequila_reposado;Cimarron Blanco|tequila_blanco;Tequila Ocho|tequila_blanco;Del Maguey Vida|mezcal;Montelobos|mezcal;Banhez|mezcal;Ilegal Mezcal|mezcal;400 Conejos|mezcal;Tito's|vodka;Ketel One|vodka;Grey Goose|vodka;Absolut|vodka;Smirnoff|vodka;Stolichnaya|vodka;Belvedere|vodka;Chopin|vodka;Hennessy|cognac;Rémy Martin|cognac;Courvoisier|cognac;Pierre Ferrand 1840|cognac;Martell|cognac;Hine|cognac;E&J Brandy|brandy;Christian Brothers|brandy;Torres 10|brandy;Germain-Robin|brandy;Barsol Pisco|pisco;Macchu Pisco|pisco;Capurro Pisco|pisco;Laird's Applejack|apple_brandy;Laird's Bottled in Bond|apple_brandy;Calvados Pays d'Auge|apple_brandy;Boulard Calvados|apple_brandy;Cointreau|orange_liqueur;Grand Marnier|orange_liqueur;Pierre Ferrand Dry Curaçao|orange_liqueur;Triple sec|orange_liqueur;Combier|orange_liqueur;Luxardo Maraschino|maraschino;Maraska Maraschino|maraschino;Disaronno|amaretto;Lazzaroni Amaretto|amaretto;Kahlúa|coffee_liqueur;Mr Black|coffee_liqueur;Tia Maria|coffee_liqueur;St-Germain|elderflower;St. Elder|elderflower;Green Chartreuse|green_chartreuse;Yellow Chartreuse|yellow_chartreuse;Bénédictine|benedictine;B&B|benedictine;Drambuie|drambuie;Galliano|galliano;Giffard Crème de Cassis|cassis;Tempus Fugit Crème de Cacao|cacao_white;Giffard White Crème de Cacao|cacao_white;Bols Crème de Cacao Brown|cacao_dark;Tempus Fugit Crème de Menthe|menthe_white;Rothman & Winter Crème de Violette|violette;Crème Yvette|violette;Cherry Heering|cherry_liqueur;Luxardo Sangue Morlacco|cherry_liqueur;Rothman & Winter Orchard Apricot|apricot_liqueur;Giffard Abricot du Roussillon|apricot_liqueur;Rothman & Winter Apricot|apricot_liqueur;DeKuyper Peachtree|peach_schnapps;Baileys|irish_cream;Chambord|raspberry_liqueur;St. George Absinthe|absinthe;Pernod Absinthe|absinthe;Kübler Absinthe|absinthe;Herbsaint|anise;Pernod|anise;Ricard|anise;Sambuca|anise;Ouzo|anise;Campari|campari;Aperol|aperol;Fernet-Branca|fernet;Branca Menta|fernet;Amaro Nonino|amaro;Averna|amaro;Amaro Montenegro|amaro;Ramazzotti|amaro;Amaro Lucano|amaro;Amaro Meletti|amaro;Amaro Ciociaro|amaro;Braulio|amaro;Cynar|cynar;Carpano Antica Formula|sweet_vermouth;Cocchi Vermouth di Torino|sweet_vermouth;Punt e Mes|sweet_vermouth;Martini Rosso|sweet_vermouth;Dolin Rouge|sweet_vermouth;Cinzano Rosso|sweet_vermouth;Dolin Dry|dry_vermouth;Noilly Prat Extra Dry|dry_vermouth;Martini Extra Dry|dry_vermouth;Dolin Blanc|blanc_vermouth;Lillet Blanc|lillet;Cocchi Americano|lillet;Tío Pepe Fino|sherry;Lustau Amontillado|sherry;Pedro Ximénez|sherry;Graham's Port|port;Taylor Fladgate|port;Pusser's|rum_dark;Hamilton Jamaican Pot Still Black|rum_dark;Velvet Falernum|falernum;John D. Taylor's Velvet Falernum|falernum;St. Elizabeth Allspice Dram|allspice_dram;Passoã|passion_liqueur;Giffard Crème de Mûre|blackberry_liqueur;Nonino Grappa|grappa;Tanteo Jalapeño Tequila|tequila_spicy;Ghost Tequila|tequila_spicy;21 Seeds Valencia Orange|tequila_spicy;Lunazul|tequila_blanco;Altos Reposado|tequila_reposado;Malibu|coconut_rum;Parrot Bay|coconut_rum;Kōloa Coconut Rum|coconut_rum;Plantation Stiggins' Fancy Pineapple|rum_aged;Pallini Limoncello|limoncello;Caravella Limoncello|limoncello;Limoncello|limoncello;Italicus|bergamot_liqueur;Ancho Reyes|chile_liqueur;Pimm's No. 1|pimms;Luxardo Bitter Bianco|bitter_bianco;Suze|gentian;Salers|gentian`
+  .split(";").map(s => { const [name, cat] = s.split("|"); return { name, cat, key: norm(name) }; });
+
+// Words in an unknown name that suggest its category.
+const HINTS = [
+  [/islay|peated/,"scotch_islay"],[/single malt/,"scotch_single_malt"],[/scotch/,"scotch_blended"],
+  [/\brye\b/,"rye"],[/bourbon/,"bourbon"],[/irish/,"irish"],[/japanese/,"japanese"],[/whisk/,"whiskey_other"],
+  [/old tom/,"gin_old_tom"],[/london dry/,"gin_london_dry"],[/\bgin\b/,"gin_london_dry"],
+  [/coconut/,"coconut_rum"],[/limoncello/,"limoncello"],[/agricole|rhum/,"rum_agricole"],[/overproof|151/,"rum_overproof"],[/dark rum|black/,"rum_dark"],
+  [/white rum|silver rum|light rum/,"rum_white"],[/\brum\b/,"rum_aged"],[/cacha/,"cachaca"],
+  [/spicy|jalapeno|habanero|chili|chile|pepper/,"tequila_spicy"],[/mezcal/,"mezcal"],[/anejo/,"tequila_anejo"],[/reposado/,"tequila_reposado"],[/tequila|blanco|plata/,"tequila_blanco"],
+  [/vodka/,"vodka"],[/cognac/,"cognac"],[/pisco/,"pisco"],[/calvados|apple ?jack|apple brandy/,"apple_brandy"],[/brandy|armagnac/,"brandy"],
+  [/sweet vermouth|rosso|rouge/,"sweet_vermouth"],[/dry vermouth/,"dry_vermouth"],[/vermouth/,"sweet_vermouth"],
+  [/sherry|fino|amontillado|oloroso/,"sherry"],[/\bport\b/,"port"],
+  [/curacao|triple sec|orange liqueur/,"orange_liqueur"],[/maraschino/,"maraschino"],[/amaretto/,"amaretto"],
+  [/coffee|espresso/,"coffee_liqueur"],[/elderflower/,"elderflower"],[/absinth/,"absinthe"],
+  [/falernum/,"falernum"],[/allspice|pimento/,"allspice_dram"],[/grappa/,"grappa"],[/mure|blackberry/,"blackberry_liqueur"],[/fernet/,"fernet"],[/amaro/,"amaro"],[/liqueur|creme/,"liqueur_other"]
+];
+
+function norm(s) { return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9 ]/g, "").replace(/\s+/g, " ").trim(); }
+function catLabel(id) { return (CATS[id] || CATS.other)[0]; }
+function guessCat(name) {
+  const n = norm(name);
+  const exact = BRANDS.find(b => b.key === n);
+  if (exact) return exact.cat;
+  const prefix = BRANDS.find(b => n.length >= 4 && b.key.startsWith(n));
+  if (prefix) return prefix.cat;
+  for (const [re, cat] of HINTS) if (re.test(n)) return cat;
+  const longer = BRANDS.find(b => n.startsWith(b.key + " "));
+  if (longer) return longer.cat;
+  const asCat = Object.entries(CATS).find(([, [label]]) => norm(label) === n);
+  return asCat ? asCat[0] : "";
+}
+function canonicalName(name) {
+  const n = norm(name);
+  const b = BRANDS.find(b => b.key === n);
+  return b ? b.name : name.trim();
+}
+function catOptions(selected, withBlank) {
+  let html = withBlank ? `<option value="">Choose a category…</option>` : "";
+  for (const [g, gl] of GROUPS) {
+    html += `<optgroup label="${gl}">`;
+    for (const [id, [label, grp]] of Object.entries(CATS)) if (grp === g)
+      html += `<option value="${id}"${id === selected ? " selected" : ""}>${label}</option>`;
+    html += `</optgroup>`;
+  }
+  return html;
+}
+const esc = s => s.replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+const $ = id => document.getElementById(id);
+
+// Storage: the artifact database when available, otherwise memory only.
+let db = null, bottles = [];
+const local = [];
+async function addBottle(name, cat) {
+  name = canonicalName(name);
+  if (!name) return;
+  if (bottles.some(b => norm(b.name) === norm(name))) { toast(`${name} is already in your Cabinet`); return; }
+  const body = { name, category: cat || "other", added: Date.now() };
+  if (db) { try { await db.collection("bottles").add(body); } catch (e) { toast("Couldn't save that bottle. Try again."); } }
+  else { local.push({ id: "l" + Math.random().toString(36).slice(2), ...body }); setBottles(local.slice()); }
+}
+async function removeBottle(b) {
+  if (db) { try { await db.doc("bottles/" + b.id).delete(); } catch (e) { toast("Couldn't remove that bottle. Try again."); return; } }
+  else { local.splice(local.findIndex(x => x.id === b.id), 1); setBottles(local.slice()); }
+  toast(`Removed ${b.name}`, () => addBottle(b.name, b.category));
+}
+async function changeCat(b, cat) {
+  if (db) { try { await db.doc("bottles/" + b.id).update({ category: cat }); } catch (e) { toast("Couldn't change the category. Try again."); } }
+  else { local.find(x => x.id === b.id).category = cat; setBottles(local.slice()); }
+}
+function setBottles(list) { bottles = list; renderShelves(); if (typeof renderDrinks === "function" && catalogLoaded) renderDrinks(); }
+
+// Shelves
+function renderShelves() {
+  $("count").textContent = bottles.length === 1 ? "1 bottle" : `${bottles.length} bottles`;
+  const box = $("shelves");
+  if (!bottles.length) {
+    box.innerHTML = `<div class="empty"><strong>Your Cabinet is empty</strong>Type a bottle above to add it, or tap "Paste a list of bottles" to add everything at once.</div>`;
+    return;
+  }
+  box.innerHTML = "";
+  for (const [g, gl] of GROUPS) {
+    const items = bottles.filter(b => (CATS[b.category] || CATS.other)[1] === g).sort((a, b) => a.name.localeCompare(b.name));
+    if (!items.length) continue;
+    const sec = document.createElement("section");
+    sec.className = "shelf";
+    sec.innerHTML = `<h2>${gl}<span>${items.length}</span></h2>`;
+    for (const b of items) {
+      const row = document.createElement("div");
+      row.className = "bottle";
+      row.innerHTML = `<span class="nm">${esc(b.name)}</span><select id="cat-${b.id}" aria-label="Category for ${esc(b.name)}">${catOptions(b.category)}</select><button class="x" aria-label="Remove ${esc(b.name)}">✕</button>`;
+      row.querySelector("select").onchange = e => changeCat(b, e.target.value);
+      row.querySelector(".x").onclick = () => removeBottle(b);
+      sec.appendChild(row);
+    }
+    box.appendChild(sec);
+  }
+}
+
+// Type-ahead
+const q = $("q"), sugs = $("sugs");
+$("manualCat").innerHTML = catOptions("", true);
+function suggest() {
+  const raw = q.value.trim(), n = norm(raw);
+  $("manual").hidden = true;
+  if (!n) { sugs.innerHTML = ""; return; }
+  const starts = [], within = [];
+  for (const b of BRANDS) {
+    if (b.key.startsWith(n) || b.key.split(" ").some(w => w.startsWith(n))) starts.push(b);
+    else if (n.length > 2 && b.key.includes(n)) within.push(b);
+  }
+  const cats = Object.entries(CATS).filter(([id, [label]]) => id !== "other" && norm(label).split(" ").some(w => w.startsWith(n)) && n.length > 2)
+    .map(([id, [label]]) => ({ name: label, cat: id, generic: true }));
+  const list = [...starts, ...within].slice(0, 5).concat(cats.slice(0, 2));
+  sugs.innerHTML = "";
+  for (const s of list) {
+    const btn = document.createElement("button");
+    btn.className = "sug";
+    btn.innerHTML = `<span>${esc(s.generic ? s.name + " (any brand)" : s.name)}</span><span class="cat">${esc(catLabel(s.cat))}</span>`;
+    btn.onclick = () => { addBottle(s.name, s.cat); q.value = ""; suggest(); q.focus(); };
+    sugs.appendChild(btn);
+  }
+  if (!list.some(s => norm(s.name) === n)) {
+    const other = document.createElement("button");
+    other.className = "sug other";
+    other.innerHTML = `<span>Add “${esc(raw)}” and pick its category</span>`;
+    other.onclick = () => { $("manualCat").value = guessCat(raw); $("manual").hidden = false; sugs.innerHTML = ""; $("manualCat").focus(); };
+    sugs.appendChild(other);
+  }
+}
+q.addEventListener("input", suggest);
+q.addEventListener("keydown", e => { if (e.key === "Enter") { const first = sugs.querySelector(".sug"); if (first) first.click(); } });
+$("manualAdd").onclick = () => {
+  const cat = $("manualCat").value;
+  if (!cat) { $("manualCat").focus(); return; }
+  addBottle(q.value, cat); q.value = ""; suggest(); q.focus();
+};
+
+// Paste a list
+let pasteItems = [];
+$("pasteToggle").onclick = () => { const p = $("paste"); p.hidden = !p.hidden; $("pasteToggle").textContent = p.hidden ? "Paste a list of bottles" : "Close the list"; if (!p.hidden) $("pasteText").focus(); };
+$("pasteSort").onclick = () => {
+  const seen = new Set();
+  pasteItems = $("pasteText").value.split(/\n|,/).map(s => s.replace(/^[\s\-•*\d.)]+/, "").trim()).filter(Boolean)
+    .filter(s => { const k = norm(s); if (seen.has(k)) return false; seen.add(k); return true; })
+    .map(s => ({ name: canonicalName(s), cat: guessCat(s) }));
+  renderPaste();
+};
+function renderPaste() {
+  const box = $("pasteRows");
+  box.innerHTML = "";
+  pasteItems.forEach((it, i) => {
+    const row = document.createElement("div");
+    row.className = "paste-row";
+    row.innerHTML = `<span class="nm">${esc(it.name)}</span><select id="paste-${i}" class="${it.cat ? "" : "unset"}" aria-label="Category for ${esc(it.name)}">${catOptions(it.cat, true)}</select><button class="x" aria-label="Skip ${esc(it.name)}">✕</button>`;
+    row.querySelector("select").onchange = e => { it.cat = e.target.value; renderPaste(); };
+    row.querySelector(".x").onclick = () => { pasteItems.splice(i, 1); renderPaste(); };
+    box.appendChild(row);
+  });
+  const ready = pasteItems.filter(it => it.cat).length, missing = pasteItems.length - ready;
+  const btn = $("pasteAdd");
+  btn.hidden = !pasteItems.length;
+  btn.disabled = !ready;
+  btn.textContent = missing ? `Add ${ready} bottles (${missing} still need a category)` : `Add ${ready} bottles`;
+}
+$("pasteAdd").onclick = async () => {
+  const toAdd = pasteItems.filter(it => it.cat);
+  for (const it of toAdd) await addBottle(it.name, it.cat);
+  pasteItems = pasteItems.filter(it => !it.cat);
+  if (!pasteItems.length) $("pasteText").value = "";
+  renderPaste();
+  toast(`Added ${toAdd.length} bottles`);
+};
+
+// Toast with optional undo
+let toastTimer;
+function toast(msg, undo) {
+  $("toastMsg").textContent = msg;
+  $("toastUndo").hidden = !undo;
+  $("toastUndo").onclick = () => { $("toast").hidden = true; undo && undo(); };
+  $("toast").hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { $("toast").hidden = true; }, 5000);
+}
+
+// Tabs
+function showTab(name) {
+  for (const t of ["cabinet", "cocktails"]) {
+    $("tab-" + t).setAttribute("aria-selected", String(t === name));
+    $("view-" + t).hidden = t !== name;
+  }
+  try { localStorage.setItem("tab", name); } catch (e) {}
+}
+$("tab-cabinet").onclick = () => showTab("cabinet");
+$("tab-cocktails").onclick = () => showTab("cocktails");
+try { if (localStorage.getItem("tab") === "cocktails") showTab("cocktails"); } catch (e) {}
+
+// Cocktails: the built-in catalog plus the ones Daniel adds.
+let catalog = [], mine = [], catalogLoaded = false, openName = "";
+// Favorites: one shared list of drink names, kept in the database.
+let favs = new Set(), favWriting = false;
+const favFirst = (a, b) => (favs.has(b.d.name) - favs.has(a.d.name)) || a.d.name.localeCompare(b.d.name);
+async function toggleFav(name) {
+  if (!db || favWriting) return;
+  const next = new Set(favs);
+  next.has(name) ? next.delete(name) : next.add(name);
+  favs = next; renderDrinks();
+  favWriting = true;
+  try { await db.doc("prefs/favorites").set({ names: [...next].sort() }); }
+  catch (e) { toast("Couldn't save that favorite. Try again."); }
+  finally { favWriting = false; }
+}
+const GROUP_TAG = { "Unforgettable": "IBA classic", "Contemporary classic": "IBA classic", "New era": "IBA new era", "Daniel's picks": "Your pick", "How to Drink": "How to Drink" };
+function allDrinks() { return catalog.concat(mine).sort((a, b) => a.name.localeCompare(b.name)); }
+// Matching: a bottle slot is filled when the Cabinet holds a bottle in one of its categories.
+let mode = "now";
+try { mode = localStorage.getItem("mode") || "now"; } catch (e) {}
+function cabinetByCat() {
+  const m = {};
+  for (const b of bottles) (m[b.category] = m[b.category] || []).push(b.name);
+  return m;
+}
+// Approved swaps. Only these count, always within the same kind of spirit, and at most one per drink.
+const SWAPS = {
+  bourbon: ["rye"], rye: ["bourbon"],
+  scotch_blended: ["scotch_single_malt"], scotch_single_malt: ["scotch_blended"],
+  gin_london_dry: ["gin_other"], gin_other: ["gin_london_dry"], gin_old_tom: ["gin_london_dry"],
+  rum_white: ["rum_aged"], rum_aged: ["rum_dark", "rum_white"], rum_dark: ["rum_aged"],
+  tequila_blanco: ["tequila_reposado", "tequila_spicy"], tequila_reposado: ["tequila_blanco", "tequila_anejo"], tequila_anejo: ["tequila_reposado"],
+  cognac: ["brandy"], brandy: ["cognac"],
+  cacao_white: ["cacao_dark"], cacao_dark: ["cacao_white"],
+  menthe_green: ["menthe_white"], menthe_white: ["menthe_green"]
+};
+function match(d, have) {
+  const missing = [], filled = [];
+  let swaps = 0;
+  for (const slot of d.bottles) {
+    const cat = slot.cats.find(c => have[c]);
+    if (cat) { filled.push({ slot, by: have[cat][0] }); continue; }
+    const alt = swaps < 1 && (SWAPS[slot.cats[0]] || []).find(c => have[c]);
+    if (alt) { swaps++; filled.push({ slot, by: have[alt][0], swap: catLabel(alt) }); }
+    else missing.push(slot);
+  }
+  return { missing, filled, swap: filled.find(f => f.swap) };
+}
+function drinkRow(d, m) {
+  const el = document.createElement("div");
+  el.className = "drink";
+  const tag = d.id ? "Added by you" : (GROUP_TAG[d.group] || "");
+  const swapNote = m.swap ? `<span class="swapnote">with ${esc(m.swap.swap.toLowerCase())} for ${esc(m.swap.slot.label.toLowerCase())}</span>` : "";
+  const fav = favs.has(d.name);
+  el.innerHTML = `<div class="drow"><button class="star" aria-pressed="${fav}" aria-label="${fav ? "Remove " + esc(d.name) + " from favorites" : "Add " + esc(d.name) + " to favorites"}">${fav ? "★" : "☆"}</button><button class="open" aria-expanded="${openName === d.name}"><span class="dn">${esc(d.name)}${swapNote}</span><span class="tag${d.id || d.group === "Daniel's picks" ? " mine" : d.group === "How to Drink" ? " htd" : ""}">${esc(tag)}</span></button></div>`;
+  el.querySelector(".star").onclick = () => toggleFav(d.name);
+  el.querySelector(".open").onclick = () => { openName = openName === d.name ? "" : d.name; renderDrinks(); };
+  if (openName === d.name) {
+    const spec = document.createElement("div");
+    spec.className = "spec";
+    const bl = d.bottles.map(b => {
+      const f = m.filled.find(x => x.slot === b);
+      const state = !f ? `<span class="need">Missing</span>`
+        : f.swap ? `<span class="swap">Swap: ${esc(f.by)}</span>` : `<span class="have">✓ ${esc(f.by)}</span>`;
+      return `<li class="bottle-line"><span class="amt">${esc(b.amt || "")}</span>${esc(b.label)} ${state}</li>`;
+    }).join("");
+    const ol = (d.onhand || []).map(x => `<li><span class="amt"></span>${esc(x)}</li>`).join("");
+    spec.innerHTML = `<span class="sub">Bottles</span><ul>${bl || "<li>None. Everything here is always on hand.</li>"}</ul>`
+      + (ol ? `<span class="sub">Always on hand</span><ul>${ol}</ul>` : "")
+      + (d.garnish ? `<p><span class="sub">Garnish</span> ${esc(d.garnish)}</p>` : "")
+      + (d.method ? `<p>${esc(d.method)}</p>` : "");
+    if (d.id) {
+      const del = document.createElement("button");
+      del.className = "linkbtn";
+      del.textContent = "Delete this cocktail";
+      del.onclick = () => deleteMine(d);
+      spec.appendChild(del);
+    }
+    el.appendChild(spec);
+  }
+  return el;
+}
+function renderDrinks() {
+  const list = allDrinks(), n = norm($("dq").value), have = cabinetByCat();
+  const scored = list.map(d => ({ d, m: match(d, have) }));
+  const now = scored.filter(x => x.d.bottles.length && !x.m.missing.length);
+  const one = scored.filter(x => x.d.bottles.length && x.m.missing.length === 1);
+  $("seg-now").textContent = `Make now · ${now.length}`;
+  $("seg-one").textContent = `One bottle away · ${one.length}`;
+  $("seg-all").textContent = `All · ${list.length}`;
+  for (const k of ["now", "one", "all"]) $("seg-" + k).setAttribute("aria-pressed", String(mode === k));
+  for (const [k] of BASES) $("base-" + k).setAttribute("aria-pressed", String(base === k));
+  $("dcount").textContent = catalogLoaded ? `${list.length} cocktails` : "Loading…";
+  const hit = x => (base === "all" || baseOf(x.d) === base) && (!n || norm(x.d.name).includes(n) || norm(x.d.source || "").includes(n) || x.d.bottles.some(b => norm(b.label).includes(n)));
+  const box = $("drinks");
+  box.innerHTML = "";
+  const empty = msg => { box.innerHTML = `<div class="empty">${msg}</div>`; };
+  if (!catalogLoaded) return empty("Loading the cocktail list…");
+  if (mode === "one") {
+    // Group by the missing bottle, biggest unlock first.
+    const groups = {};
+    for (const x of one.filter(hit)) {
+      const slot = x.m.missing[0], key = slot.cats[0];
+      (groups[key] = groups[key] || { label: catLabel(key), alts: slot.cats, items: [] }).items.push(x);
+    }
+    const keys = Object.keys(groups).sort((a, b) => groups[b].items.length - groups[a].items.length || groups[a].label.localeCompare(groups[b].label));
+    if (!keys.length) return empty(n ? "No cocktails match that search." : "Nothing is exactly one bottle away yet. Add more bottles to your Cabinet.");
+    for (const k of keys) {
+      const g = groups[k], sec = document.createElement("section");
+      sec.className = "unlock";
+      const alts = g.alts.length > 1 ? ` <span class="alts">or ${esc(g.alts.slice(1).map(catLabel).join(" or "))}</span>` : "";
+      sec.innerHTML = `<h2>${esc(g.label)}${alts}<span>${g.items.length === 1 ? "unlocks 1 drink" : `unlocks ${g.items.length} drinks`}</span></h2>`;
+      for (const x of g.items.sort(favFirst)) sec.appendChild(drinkRow(x.d, x.m));
+      box.appendChild(sec);
+    }
+    return;
+  }
+  const shown = (mode === "now" ? now : scored).filter(hit).sort(favFirst);
+  if (!shown.length) return empty(n ? "No cocktails match that search." : mode === "now" ? "Nothing you can make yet. Add bottles to your Cabinet, or check One bottle away." : "No cocktails yet.");
+  for (const x of shown) box.appendChild(drinkRow(x.d, x.m));
+}
+// Base spirit filter: a drink's base is the kind of its first bottle.
+const BASES = [["all","All spirits"],["whiskey","Whiskey"],["gin","Gin"],["rum","Rum"],["agave","Tequila & mezcal"],["vodka","Vodka"],["brandy","Brandy"],["other","Liqueurs & more"]];
+let base = "all";
+try { base = localStorage.getItem("base") || "all"; } catch (e) {}
+function baseOf(d) {
+  const g = d.bottles.length ? (CATS[d.bottles[0].cats[0]] || CATS.other)[1] : "other";
+  return BASES.some(([k]) => k === g) ? g : "other";
+}
+for (const [k, label] of BASES) {
+  const btn = document.createElement("button");
+  btn.type = "button"; btn.id = "base-" + k; btn.textContent = label;
+  btn.onclick = () => { base = k; try { localStorage.setItem("base", k); } catch (e) {} renderDrinks(); };
+  $("baseSeg").appendChild(btn);
+}
+for (const k of ["now", "one", "all"]) $("seg-" + k).onclick = () => { mode = k; try { localStorage.setItem("mode", k); } catch (e) {} renderDrinks(); };
+$("dq").addEventListener("input", renderDrinks);
+async function deleteMine(d) {
+  if (!db) return;
+  try { await db.doc("myRecipes/" + d.id).delete(); } catch (e) { toast("Couldn't delete that cocktail. Try again."); return; }
+  const { id, ...body } = d;
+  toast(`Deleted ${d.name}`, () => db.collection("myRecipes").add(body));
+}
+
+// Add a cocktail
+function bottleRow(b = {}) {
+  const row = document.createElement("div");
+  row.className = "brow";
+  const k = Math.random().toString(36).slice(2, 8);
+  row.innerHTML = `<input type="text" id="ba-${k}" placeholder="2 oz" aria-label="Amount" value="${esc(b.amt || "")}">`
+    + `<input type="text" id="bl-${k}" placeholder="Bourbon" aria-label="Bottle" value="${esc(b.label || "")}">`
+    + `<button type="button" class="x" aria-label="Remove this bottle">✕</button>`
+    + `<select id="bc-${k}" aria-label="Category">${catOptions(b.cat || "", true)}</select>`;
+  const label = row.querySelector(`#bl-${k}`), sel = row.querySelector("select");
+  label.addEventListener("change", () => { if (!sel.value) sel.value = guessCat(label.value); });
+  row.querySelector(".x").onclick = () => row.remove();
+  $("fBottles").appendChild(row);
+}
+function resetForm() {
+  for (const id of ["fName", "fOnhand", "fGarnish", "fMethod", "parseText"]) $(id).value = "";
+  $("fBottles").innerHTML = ""; bottleRow();
+  $("fErr").hidden = true; $("parseMsg").textContent = "";
+}
+$("addToggle").onclick = () => { const f = $("addForm"); f.hidden = !f.hidden; if (!f.hidden) { resetForm(); $("fName").focus(); } };
+$("addCancel").onclick = () => { $("addForm").hidden = true; };
+$("addBottleRow").onclick = () => bottleRow();
+$("addForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const err = msg => { $("fErr").textContent = msg; $("fErr").hidden = false; };
+  const name = $("fName").value.trim();
+  if (!name) return err("Give the cocktail a name.");
+  if (allDrinks().some(d => norm(d.name) === norm(name))) return err(`${name} is already on the list.`);
+  const bottles = [];
+  for (const row of $("fBottles").querySelectorAll(".brow")) {
+    const [amt, label] = [...row.querySelectorAll("input")].map(i => i.value.trim());
+    const cat = row.querySelector("select").value;
+    if (!label) continue;
+    if (!cat) return err(`Pick a category for ${label}.`);
+    bottles.push({ amt, label, cats: [cat] });
+  }
+  const body = { name, family: name, group: "Added by you", source: "Added by you", bottles,
+    onhand: $("fOnhand").value.split("\n").map(s => s.trim()).filter(Boolean),
+    garnish: $("fGarnish").value.trim(), method: $("fMethod").value.trim(), added: Date.now() };
+  if (!db) return err("Saving isn't available here. Open this page from your Claude account.");
+  try { await db.collection("myRecipes").add(body); } catch (e2) { return err("Couldn't save the cocktail. Try again."); }
+  $("addForm").hidden = true; openName = name; $("dq").value = ""; renderDrinks();
+  toast(`Added ${name}`);
+});
+
+// Paste a recipe: Claude reads the text and fills in the form.
+let sample = null;
+$("parseBtn").onclick = async () => {
+  const text = $("parseText").value.trim();
+  if (!text || !sample) return;
+  const btn = $("parseBtn"), msg = $("parseMsg");
+  btn.disabled = true; msg.textContent = "Reading the recipe…";
+  const catList = Object.entries(CATS).map(([id, [label]]) => `${id}: ${label}`).join("\n");
+  const prompt = `Turn this cocktail recipe into JSON. Reply with JSON only, in this shape:
+{"name": string, "bottles": [{"amt": string, "label": string, "cat": string}], "onhand": [string], "garnish": string, "method": string}
+"bottles" holds only spirits, liqueurs, vermouths and other fortified wines, amari, and absinthe. Give each a "cat" id from the list below, or "" if none fits.
+Everything else (juices, syrups, sugar, agave, honey, bitters, sodas, wine, sparkling wine, eggs, cream, herbs) goes in "onhand" as short lines with amounts, like "1 oz lime juice".
+Use US ounces for amounts. Keep "method" to one or two short sentences.
+Category ids:
+${catList}
+
+Recipe:
+${text}`;
+  try {
+    const r = await sample.json(prompt, { modelTier: "quick" });
+    $("fName").value = r.name || "";
+    $("fBottles").innerHTML = "";
+    (r.bottles || []).forEach(b => bottleRow({ amt: b.amt, label: b.label, cat: CATS[b.cat] ? b.cat : guessCat(b.label || "") }));
+    if (!(r.bottles || []).length) bottleRow();
+    $("fOnhand").value = (r.onhand || []).join("\n");
+    $("fGarnish").value = r.garnish || "";
+    $("fMethod").value = r.method || "";
+    msg.textContent = "Check the details below, then save.";
+  } catch (e) {
+    msg.textContent = e && e.code === "not_granted"
+      ? "Reading recipes needs your OK to use Claude. You can still fill in the form by hand."
+      : "Couldn't read that recipe. Try pasting just the ingredients and steps, or fill in the form by hand.";
+  } finally { btn.disabled = false; }
+};
+
+
+// Backups
+$("backupSave").onclick = async () => {
+  const blob = new Blob([await window.cabinetBackup.export()], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "cocktail-cabinet-backup-" + new Date().toISOString().slice(0, 10) + ".json";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+};
+$("backupFile").onchange = async e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  try { await window.cabinetBackup.import(await f.text()); toast("Restored your backup"); }
+  catch (err) { toast("That file isn't a Cocktail Cabinet backup."); }
+  e.target.value = "";
+};
+renderShelves();
+renderDrinks();
+(async () => {
+  const use = window.claude?.use ? n => window.claude.use(n) : null;
+  if (use) use("sample").then(s => { sample = s; $("parseBox").hidden = !s; });
+  db = use ? await use("db") : null;
+  if (!db) { $("offline").hidden = false; return; }
+  db.collection("bottles").onSnapshot(
+    snap => setBottles(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
+    () => { db = null; $("offline").hidden = false; }
+  );
+  db.doc("catalog/iba").onSnapshot(snap => { catalog = snap.exists ? snap.data().recipes || [] : []; catalogLoaded = true; renderDrinks(); }, () => {});
+  db.doc("prefs/favorites").onSnapshot(snap => { if (favWriting) return; favs = new Set(snap.exists ? snap.data().names || [] : []); renderDrinks(); }, () => {});
+  db.collection("myRecipes").onSnapshot(snap => { mine = snap.docs.map(d => ({ id: d.id, ...d.data() })); renderDrinks(); }, () => {});
+})();
+</script>
+
+</body>
+</html>
